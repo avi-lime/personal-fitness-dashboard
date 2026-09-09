@@ -176,24 +176,35 @@ own temporary users and delete them afterwards, so they never touch your own dat
 
 1. Push the repository to GitHub and import it in Vercel (framework preset: Next.js — no
    overrides needed).
-2. Provision Postgres (Vercel Postgres, Neon, or Supabase) and copy the **pooled** connection
-   string.
+2. Provision Postgres. **Neon** is the path of least resistance: in your Vercel project go to
+   **Storage → Create Database → Neon** (Vercel's own "Vercel Postgres" was folded into Neon in
+   early 2025, and Neon is now the first-party Marketplace option). It has a free tier, scales to
+   zero, and injects `DATABASE_URL` into the project automatically — so you usually do not have to
+   set that variable by hand. Supabase works too if you want auth/storage later.
+
+   This app is already configured for a pooled/pgBouncer connection (`max: 1`, `prepare: false`
+   in `src/db/index.ts`), so use the **pooled** connection string (the host contains `-pooler`)
+   for `DATABASE_URL`.
 3. Add the environment variables in **Project → Settings → Environment Variables** for
    *Production* (and *Preview* if you use it):
 
    | Name | Value |
    | --- | --- |
-   | `DATABASE_URL` | pooled Postgres connection string |
+   | `DATABASE_URL` | pooled Postgres connection string (Neon sets this for you) |
    | `AUTH_USERNAME` | your username (optional, defaults to `owner`) |
    | `AUTH_PASSWORD` | a long random password |
    | `AUTH_SECRET` | `openssl rand -base64 48` |
    | `MCP_TOKEN` | `openssl rand -hex 32` (omit to disable MCP) |
 
-4. Deploy, then apply migrations against the production database from your machine:
+4. Deploy, then apply migrations against the production database from your machine. Migrations
+   are DDL, so prefer the **direct/unpooled** URL here (Neon exposes it as `DATABASE_URL_UNPOOLED`
+   in the Vercel dashboard):
 
    ```bash
-   DATABASE_URL="<production-pooled-url>" npm run db:migrate
+   DATABASE_URL="<production-direct-url>" npm run db:migrate
    ```
+
+   The pooled URL also works; the direct one just avoids pooler quirks during schema changes.
 
 5. Visit your deployment and sign in. **Do not** run `npm run db:seed` against production — it
    refuses to run when `NODE_ENV=production` anyway.
