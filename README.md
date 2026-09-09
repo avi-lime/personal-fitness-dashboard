@@ -223,6 +223,21 @@ Locally: `http://localhost:3000/api/mcp`. It speaks streamable HTTP and requires
 `WWW-Authenticate` challenge and never reach a tool. If `MCP_TOKEN` is unset, every request is
 rejected.
 
+### Deployment Protection blocks this endpoint
+
+Vercel's **Deployment Protection** (Settings → Deployment Protection) sits in front of the
+deployment and challenges *every* request, including ones carrying a bearer token. If it is on,
+an MCP client gets a `307` to `vercel.com/sso-api` instead of a `401`/`200`, and browsing the app
+anonymously redirects to a Vercel login.
+
+Pick one:
+
+- **Turn Vercel Authentication off** for Production (simplest). The app is still private: it has
+  its own login, and `/api/mcp` still requires `MCP_TOKEN`.
+- **Keep it on** and enable *Protection Bypass for Automation*, then send the generated secret as
+  an `x-vercel-protection-bypass` header alongside the `Authorization` header. Note that this puts
+  a second secret in your MCP client configuration.
+
 ### Connecting from Claude Code
 
 ```bash
@@ -334,6 +349,12 @@ Vercel deployment this is the usual second step — the build succeeds without a
 running app needs the schema.
 
 **Port 3000 is taken.** `PORT=3001 npm run dev`.
+
+**The Vercel URL 404s with `x-vercel-error: NOT_FOUND`.** That domain is not assigned to your
+project. `*.vercel.app` subdomains are globally unique, so a plausible-looking name may well
+belong to somebody else's project — check the real URL in the Vercel dashboard (or in the
+deployment status on the GitHub commit) rather than guessing it, and never sign in on a domain you
+have not verified.
 
 ## Security notes
 
