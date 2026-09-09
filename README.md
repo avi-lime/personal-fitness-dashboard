@@ -206,7 +206,8 @@ own temporary users and delete them afterwards, so they never touch your own dat
 
    The pooled URL also works; the direct one just avoids pooler quirks during schema changes.
 
-5. Visit your deployment and sign in. **Do not** run `npm run db:seed` against production — it
+5. Visit your deployment and sign in. If pages error with *"relation ... does not exist"*, step 4
+   has not been run yet. **Do not** run `npm run db:seed` against production — it
    refuses to run when `NODE_ENV=production` anyway.
 
 ## MCP server
@@ -328,7 +329,9 @@ docker exec life-dashboard-db pg_isready -U postgres
 **"Invalid environment configuration" on startup.** `.env.local` is missing or a value is too
 short. Copy `.env.example` and regenerate the secrets with the `openssl` commands above.
 
-**A relation does not exist.** Migrations have not been applied: `npm run db:migrate`.
+**A relation does not exist.** Migrations have not been applied: `npm run db:migrate`. On a fresh
+Vercel deployment this is the usual second step — the build succeeds without a database, but the
+running app needs the schema.
 
 **Port 3000 is taken.** `PORT=3001 npm run dev`.
 
