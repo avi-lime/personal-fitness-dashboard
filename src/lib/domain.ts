@@ -41,6 +41,7 @@ export const METRIC_KEYS = [
   "body_weight_kg",
   "time_minutes",
   "tasks_completed",
+  "applications_sent",
 ] as const;
 export type MetricKey = (typeof METRIC_KEYS)[number];
 
@@ -78,6 +79,30 @@ export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
 export const TASK_STATUSES = ["todo", "done"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+/** Job-search pipeline stages, in order. */
+export const APPLICATION_STAGES = [
+  "wishlist",
+  "applied",
+  "screening",
+  "interview",
+  "offer",
+  "rejected",
+] as const;
+export type ApplicationStage = (typeof APPLICATION_STAGES)[number];
+
+export const APPLICATION_STAGE_LABELS: Record<ApplicationStage, string> = {
+  wishlist: "Wishlist",
+  applied: "Applied",
+  screening: "Screening",
+  interview: "Interview",
+  offer: "Offer",
+  rejected: "Rejected",
+};
+
+/** What a planned block of the day is for. */
+export const BLOCK_KINDS = ["routine", "task", "meal", "workout", "study", "other"] as const;
+export type BlockKind = (typeof BLOCK_KINDS)[number];
 
 export const GOAL_STATUSES = ["not_started", "in_progress", "complete"] as const;
 export type GoalStatus = (typeof GOAL_STATUSES)[number];

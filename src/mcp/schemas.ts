@@ -1,8 +1,12 @@
 import { z } from "zod";
 import { validateMetricParam } from "@/lib/validation";
 import {
+  applicationStageSchema,
   areaKeySchema,
+  blockKindSchema,
   caloriesSchema,
+  hhmmSchema,
+  weekdaySchema,
   dateRangeSchema,
   goalPeriodSchema,
   goalTypeSchema,
@@ -229,3 +233,105 @@ export const logTimeInput = z.object({
   date: localDateSchema.describe("Day of the session. Defaults to today.").optional(),
   notes: z.string().trim().max(500).optional(),
 });
+
+// --- Career ----------------------------------------------------------------
+
+const applicationId = uuidSchema.describe("The application's id, if known.").optional();
+
+export const addApplicationInput = z.object({
+  company: z.string().trim().min(1).max(120),
+  role: z.string().trim().min(1).max(120),
+  stage: applicationStageSchema
+    .describe("wishlist | applied | screening | interview | offer | rejected. Defaults to wishlist.")
+    .optional(),
+  url: z.string().trim().url().max(500).optional(),
+  location: z.string().trim().max(120).optional(),
+  salaryNote: z.string().trim().max(120).optional(),
+  nextStep: z.string().trim().max(200).describe('e.g. "Prepare for system design round".').optional(),
+  nextStepDate: localDateSchema.optional(),
+  appliedOn: localDateSchema.describe("Defaults to today for any stage past wishlist.").optional(),
+  notes: z.string().trim().max(2000).optional(),
+});
+
+export const updateApplicationInput = z
+  .object({
+    applicationId,
+    company: z.string().trim().min(1).max(120).describe("Company name, matched loosely, to find the application.").optional(),
+    role: z.string().trim().min(1).max(120).optional(),
+    stage: applicationStageSchema.optional(),
+    url: z.string().trim().url().max(500).nullable().optional(),
+    location: z.string().trim().max(120).nullable().optional(),
+    salaryNote: z.string().trim().max(120).nullable().optional(),
+    nextStep: z.string().trim().max(200).nullable().optional(),
+    nextStepDate: localDateSchema.nullable().optional(),
+    appliedOn: localDateSchema.nullable().optional(),
+    notes: z.string().trim().max(2000).nullable().optional(),
+  })
+  .refine((v) => v.applicationId || v.company, {
+    message: "Give an applicationId or a company",
+    path: ["company"],
+  });
+
+export const listApplicationsInput = z.object({
+  stage: applicationStageSchema.optional(),
+  includeArchived: z.boolean().optional(),
+});
+
+export const archiveApplicationInput = z
+  .object({
+    applicationId,
+    company: z.string().trim().min(1).max(120).optional(),
+  })
+  .refine((v) => v.applicationId || v.company, {
+    message: "Give an applicationId or a company",
+    path: ["company"],
+  });
+
+// --- Daily plan ------------------------------------------------------------
+
+export const getDayPlanInput = z.object({
+  date: localDateSchema.describe("Defaults to today.").optional(),
+});
+
+export const planDayInput = z.object({
+  date: localDateSchema.describe("Defaults to today.").optional(),
+});
+
+export const addBlockInput = z
+  .object({
+    date: localDateSchema.describe("Defaults to today.").optional(),
+    startTime: hhmmSchema.describe("HH:MM, 24-hour, in the user's timezone."),
+    endTime: hhmmSchema,
+    label: z.string().trim().min(1).max(120),
+    kind: blockKindSchema.describe("routine | task | meal | workout | study | other").optional(),
+    area: areaKeySchema.optional(),
+    taskId: uuidSchema.optional(),
+  })
+  .refine((v) => v.endTime > v.startTime, { message: "endTime must be after startTime", path: ["endTime"] });
+
+export const completeBlockInput = z
+  .object({
+    blockId: uuidSchema.optional(),
+    label: z.string().trim().min(1).max(120).describe("Block label, matched loosely.").optional(),
+    date: localDateSchema.describe("Defaults to today.").optional(),
+    done: z.boolean().describe("Defaults to true.").optional(),
+  })
+  .refine((v) => v.blockId || v.label, { message: "Give a blockId or a label", path: ["label"] });
+
+export const addRoutineInput = z
+  .object({
+    label: z.string().trim().min(1).max(120),
+    startTime: hhmmSchema,
+    endTime: hhmmSchema,
+    weekdays: z.array(weekdaySchema).min(1).describe('Days it repeats, e.g. ["mon","wed","fri"].'),
+    kind: blockKindSchema.optional(),
+    area: areaKeySchema.optional(),
+  })
+  .refine((v) => v.endTime > v.startTime, { message: "endTime must be after startTime", path: ["endTime"] });
+
+export const removeRoutineInput = z
+  .object({
+    routineId: uuidSchema.optional(),
+    label: z.string().trim().min(1).max(120).optional(),
+  })
+  .refine((v) => v.routineId || v.label, { message: "Give a routineId or a label", path: ["label"] });

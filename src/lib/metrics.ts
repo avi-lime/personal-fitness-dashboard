@@ -22,6 +22,8 @@ export interface DayFacts {
   /** Finished time-tracking minutes, keyed by area/category. */
   minutesByCategory: Record<string, number>;
   tasksCompleted: number;
+  /** Job applications whose `appliedOn` is this day. */
+  applicationsSent: number;
 }
 
 export function emptyDayFacts(date: LocalDate): DayFacts {
@@ -38,6 +40,7 @@ export function emptyDayFacts(date: LocalDate): DayFacts {
     manualByGoalId: {},
     minutesByCategory: {},
     tasksCompleted: 0,
+    applicationsSent: 0,
   };
 }
 
@@ -157,6 +160,14 @@ export const METRICS: Readonly<Record<MetricKey, MetricDefinition>> = {
     suggestedType: "count",
     aggregation: "sum",
     select: (f) => f.tasksCompleted,
+  },
+  applications_sent: {
+    key: "applications_sent",
+    label: "Job applications sent",
+    defaultUnit: "applications",
+    suggestedType: "count",
+    aggregation: "sum",
+    select: (f) => f.applicationsSent,
   },
 };
 

@@ -1,5 +1,5 @@
 /** Sent to clients during initialization; shapes how a model should use this server. */
-export const SERVER_INSTRUCTIONS = `This server controls one person's private life dashboard: goals, food, water, weight, sleep, workouts, notes, tasks and time tracking (study, freelance, work, career…).
+export const SERVER_INSTRUCTIONS = `This server controls one person's private life dashboard: goals, food, water, weight, sleep, workouts, notes, tasks, time tracking (study, freelance, work, career…), a job-application pipeline and a planned day made of time blocks and routines.
 
 Read tools (get_*) are safe to call whenever you need context; they never change anything.
 
@@ -12,4 +12,6 @@ Rules of thumb:
 - remove_goal archives a goal and hides it from the dashboard; historical entries are kept. It is not reversible from this server, so confirm with the user first.
 - Tasks are things still to do; use complete_task when one is finished and log_time / start_timer for time spent. "I studied for an hour" is log_time, not a task.
 - Life areas are a fixed list: fitness, nutrition, work, freelance, career, study, money, personal.
+- "Plan my day" means plan_day (routines → blocks); then add_block for one-off items the user mentions. Times are HH:MM in the user's timezone.
+- Job applications move through wishlist → applied → screening → interview → offer / rejected via update_application; archive only when the user wants it gone.
 - Ask for clarification rather than guessing when a mutation is ambiguous.`;

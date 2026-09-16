@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, between, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  applications,
   foodLogs,
   goalEntries,
   sleepEntries,
@@ -25,7 +26,7 @@ export async function loadDayFacts(
   startDate: LocalDate,
   endDate: LocalDate,
 ): Promise<Map<LocalDate, DayFacts>> {
-  const [food, water, weights, sleep, sessions, entries, time, doneTasks] = await Promise.all([
+  const [food, water, weights, sleep, sessions, entries, time, doneTasks, sent] = await Promise.all([
     db
       .select({
         localDate: foodLogs.localDate,
@@ -105,6 +106,12 @@ export async function loadDayFacts(
           between(tasks.completedOn, startDate, endDate),
         ),
       ),
+    db
+      .select({ appliedOn: applications.appliedOn })
+      .from(applications)
+      .where(
+        and(eq(applications.userId, userId), between(applications.appliedOn, startDate, endDate)),
+      ),
   ]);
 
   const map = new Map<LocalDate, DayFacts>();
@@ -141,6 +148,9 @@ export async function loadDayFacts(
   }
   for (const row of doneTasks) {
     if (row.completedOn) factsFor(row.completedOn).tasksCompleted += 1;
+  }
+  for (const row of sent) {
+    if (row.appliedOn) factsFor(row.appliedOn).applicationsSent += 1;
   }
 
   for (const facts of map.values()) {

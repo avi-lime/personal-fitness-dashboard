@@ -1,6 +1,8 @@
 import { z } from "zod";
 import {
+  APPLICATION_STAGES,
   AREA_KEYS,
+  BLOCK_KINDS,
   GOAL_PERIODS,
   GOAL_TYPES,
   MEAL_TYPES,
@@ -12,6 +14,7 @@ import {
 } from "./domain";
 import { isLocalDate, isValidTimeZone } from "./date";
 import { METRICS } from "./metrics";
+import { WEEKDAYS, isHHMM } from "./plan";
 
 /**
  * One set of schemas shared by the web server actions and the MCP tools, so
@@ -282,3 +285,58 @@ export function formatZodError(error: z.ZodError): string {
     })
     .join("; ");
 }
+
+// --- Career ----------------------------------------------------------------
+
+export const applicationStageSchema = z.enum(APPLICATION_STAGES);
+
+export const applicationInputSchema = z.object({
+  company: z.string().trim().min(1, "Company is required").max(120),
+  role: z.string().trim().min(1, "Role is required").max(120),
+  stage: applicationStageSchema.default("wishlist"),
+  url: z.string().trim().url("Enter a full URL").max(500).nullish(),
+  location: z.string().trim().max(120).nullish(),
+  salaryNote: z.string().trim().max(120).nullish(),
+  nextStep: z.string().trim().max(200).nullish(),
+  nextStepDate: localDateSchema.nullish(),
+  appliedOn: localDateSchema.nullish(),
+  notes: z.string().trim().max(2000).nullish(),
+});
+export type ApplicationInput = z.infer<typeof applicationInputSchema>;
+
+export const applicationUpdateSchema = applicationInputSchema.partial();
+export type ApplicationUpdate = z.infer<typeof applicationUpdateSchema>;
+
+// --- Daily plan ------------------------------------------------------------
+
+export const hhmmSchema = z.string().refine(isHHMM, "Expected a time as HH:MM (24-hour)");
+export const weekdaySchema = z.enum(WEEKDAYS);
+export const blockKindSchema = z.enum(BLOCK_KINDS);
+
+const endsAfterStart = (value: { startTime: string; endTime: string }) =>
+  value.endTime > value.startTime;
+
+export const routineInputSchema = z
+  .object({
+    label: z.string().trim().min(1, "Label is required").max(120),
+    kind: blockKindSchema.default("routine"),
+    area: areaKeySchema.nullish(),
+    startTime: hhmmSchema,
+    endTime: hhmmSchema,
+    weekdays: z.array(weekdaySchema).min(1, "Pick at least one day"),
+  })
+  .refine(endsAfterStart, { message: "End time must be after start time", path: ["endTime"] });
+export type RoutineInput = z.infer<typeof routineInputSchema>;
+
+export const timeBlockInputSchema = z
+  .object({
+    date: localDateSchema.nullish(),
+    startTime: hhmmSchema,
+    endTime: hhmmSchema,
+    label: z.string().trim().min(1, "Label is required").max(120),
+    kind: blockKindSchema.default("other"),
+    area: areaKeySchema.nullish(),
+    taskId: uuidSchema.nullish(),
+  })
+  .refine(endsAfterStart, { message: "End time must be after start time", path: ["endTime"] });
+export type TimeBlockInput = z.infer<typeof timeBlockInputSchema>;

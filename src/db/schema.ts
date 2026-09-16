@@ -13,7 +13,9 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import type {
+  ApplicationStage,
   AreaKey,
+  BlockKind,
   DashboardSectionVisibility,
   EntrySource,
   GoalPeriod,
@@ -396,6 +398,82 @@ export const timeEntries = pgTable(
   (table) => [index("time_entries_day_idx").on(table.userId, table.localDate)],
 );
 
+export const applications = pgTable(
+  "applications",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    company: text("company").notNull(),
+    role: text("role").notNull(),
+    stage: text("stage").$type<ApplicationStage>().notNull().default("wishlist"),
+    url: text("url"),
+    location: text("location"),
+    salaryNote: text("salary_note"),
+    nextStep: text("next_step"),
+    nextStepDate: date("next_step_date"),
+    /** The day the application was actually sent — what "applications sent" counts. */
+    appliedOn: date("applied_on"),
+    stageChangedAt: timestamp("stage_changed_at", { withTimezone: true }).notNull().defaultNow(),
+    notes: text("notes"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    source: text("source").$type<EntrySource>().notNull().default("web"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("applications_stage_idx").on(table.userId, table.stage),
+    index("applications_applied_idx").on(table.userId, table.appliedOn),
+  ],
+);
+
+/** A recurring block of the day, materialised into `timeBlocks` by "plan my day". */
+export const routines = pgTable(
+  "routines",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    kind: text("kind").$type<BlockKind>().notNull().default("routine"),
+    area: text("area").$type<AreaKey>(),
+    startTime: text("start_time").notNull(),
+    endTime: text("end_time").notNull(),
+    /** Bitmask, Monday = 1 … Sunday = 64 (see `lib/plan.ts`). */
+    weekdays: integer("weekdays").notNull(),
+    active: boolean("active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("routines_user_idx").on(table.userId, table.startTime)],
+);
+
+export const timeBlocks = pgTable(
+  "time_blocks",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    localDate: date("local_date").notNull(),
+    /** Wall-clock HH:MM in the user's timezone. */
+    startTime: text("start_time").notNull(),
+    endTime: text("end_time").notNull(),
+    label: text("label").notNull(),
+    kind: text("kind").$type<BlockKind>().notNull().default("other"),
+    area: text("area").$type<AreaKey>(),
+    taskId: uuid("task_id").references(() => tasks.id, { onDelete: "set null" }),
+    routineId: uuid("routine_id").references(() => routines.id, { onDelete: "set null" }),
+    done: boolean("done").notNull().default(false),
+    source: text("source").$type<EntrySource>().notNull().default("web"),
+    createdAt: createdAt(),
+  },
+  (table) => [index("time_blocks_day_idx").on(table.userId, table.localDate, table.startTime)],
+);
+
 /** Append-only audit trail for every mutation made through a tool. */
 export const mcpAuditLog = pgTable(
   "mcp_audit_log",
@@ -479,3 +557,6 @@ export type WorkoutSet = typeof workoutSets.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type TimeEntry = typeof timeEntries.$inferSelect;
+export type Application = typeof applications.$inferSelect;
+export type Routine = typeof routines.$inferSelect;
+export type TimeBlock = typeof timeBlocks.$inferSelect;
