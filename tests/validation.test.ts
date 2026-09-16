@@ -42,3 +42,12 @@ describe("tasks and time", () => {
     expect(timeEntryInputSchema.safeParse({ category: "study", minutes: 5000 }).success).toBe(false);
   });
 });
+
+describe("money metric parameters", () => {
+  it("lets spend goals use any category or none", () => {
+    const spend = { name: "Food", type: "numeric", period: "monthly", metricKey: "spend" };
+    expect(goalInputSchema.safeParse(spend).success).toBe(true);
+    expect(goalInputSchema.safeParse({ ...spend, metricParam: "food" }).success).toBe(true);
+    expect(goalInputSchema.safeParse({ ...spend, metricParam: "study" }).success).toBe(false);
+  });
+});

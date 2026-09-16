@@ -1,5 +1,5 @@
 /** Sent to clients during initialization; shapes how a model should use this server. */
-export const SERVER_INSTRUCTIONS = `This server controls one person's private life dashboard: goals, food, water, weight, sleep, workouts, notes, tasks, time tracking (study, freelance, work, career…), a job-application pipeline and a planned day made of time blocks and routines.
+export const SERVER_INSTRUCTIONS = `This server controls one person's private life dashboard: goals, food, water, weight, sleep, workouts, notes, tasks, time tracking (study, freelance, work, career…), a job-application pipeline, a planned day made of time blocks and routines, and money (accounts, expenses, income, bills).
 
 Read tools (get_*) are safe to call whenever you need context; they never change anything.
 
@@ -14,4 +14,5 @@ Rules of thumb:
 - Life areas are a fixed list: fitness, nutrition, work, freelance, career, study, money, personal.
 - "Plan my day" means plan_day (routines → blocks); then add_block for one-off items the user mentions. Times are HH:MM in the user's timezone.
 - Job applications move through wishlist → applied → screening → interview → offer / rejected via update_application; archive only when the user wants it gone.
+- Money: "I spent 250 on lunch" is log_expense (category food). Amounts are in the user's currency. A bill that was paid is pay_bill; paying off a credit card is a transfer, not spending. Never invent amounts.
 - Ask for clarification rather than guessing when a mutation is ambiguous.`;

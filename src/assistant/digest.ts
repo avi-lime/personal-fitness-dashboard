@@ -5,6 +5,7 @@ import { listTasks } from "@/server/services/tasks";
 import { getRunningTimer } from "@/server/services/time";
 import { listApplications } from "@/server/services/career";
 import { listBlocks } from "@/server/services/plan";
+import { listAccounts, listBills } from "@/server/services/money";
 import { AREA_LABELS } from "@/lib/domain";
 import { formatValue } from "@/lib/format";
 
@@ -14,12 +15,14 @@ import { formatValue } from "@/lib/format";
  * instead of a read round trip. Kept small: names and a few numbers.
  */
 export async function buildDigest(ctx: McpContext): Promise<string> {
-  const [goals, openTasks, running, apps, blocks] = await Promise.all([
+  const [goals, openTasks, running, apps, blocks, accounts, pendingBills] = await Promise.all([
     listGoals(ctx.userId),
     listTasks(ctx.userId, { status: "todo", limit: 30 }),
     getRunningTimer(ctx.userId),
     listApplications(ctx.userId),
     listBlocks(ctx.userId, ctx.today),
+    listAccounts(ctx.userId),
+    listBills(ctx.userId, "pending"),
   ]);
   const lines: string[] = [];
 
@@ -66,6 +69,15 @@ export async function buildDigest(ctx: McpContext): Promise<string> {
       ? "Today's plan: nothing planned yet."
       : `Today's plan: ${blocks.map((b) => `${b.startTime}–${b.endTime} ${b.label}${b.done ? " ✓" : ""}`).join("; ")}.`,
   );
+
+  if (accounts.length > 0) {
+    lines.push(`Money accounts: ${accounts.map((a) => `${a.name} (${a.kind.replace("_", " ")}, balance ${formatValue(a.balance, 2)})`).join("; ")}.`);
+  } else {
+    lines.push("Money accounts: none (expenses can still be logged without one).");
+  }
+  if (pendingBills.length > 0) {
+    lines.push(`Pending bills: ${pendingBills.slice(0, 10).map((b) => `${b.name} ${formatValue(b.amount, 2)} due ${b.dueDate}`).join("; ")}.`);
+  }
 
   return lines.join("\n");
 }

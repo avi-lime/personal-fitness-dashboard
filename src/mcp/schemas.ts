@@ -1,8 +1,12 @@
 import { z } from "zod";
 import { validateMetricParam } from "@/lib/validation";
 import {
+  accountKindSchema,
+  amountSchema,
   applicationStageSchema,
   areaKeySchema,
+  billRecurrenceSchema,
+  expenseCategorySchema,
   blockKindSchema,
   caloriesSchema,
   hhmmSchema,
@@ -121,8 +125,13 @@ export const addGoalInput = z
         "Derive progress automatically from logged entries. Omit for a goal recorded by hand with complete_goal. time_minutes needs metricParam.",
       )
       .optional(),
-    metricParam: areaKeySchema
-      .describe("For metricKey time_minutes: which category of tracked time counts.")
+    metricParam: z
+      .string()
+      .trim()
+      .max(40)
+      .describe(
+        "For time_minutes: a life area (required). For spend: an expense category (optional, omit for all spending).",
+      )
       .optional(),
     area: areaKeySchema.describe("Life area this goal belongs to.").optional(),
     visibleOnDashboard: z.boolean().optional(),
@@ -139,7 +148,7 @@ export const updateGoalInput = z.object({
   targetValue: z.number().finite().min(0).max(1_000_000).nullable().optional(),
   period: goalPeriodSchema.optional(),
   metricKey: metricKeySchema.nullable().optional(),
-  metricParam: areaKeySchema.nullable().optional(),
+  metricParam: z.string().trim().max(40).nullable().optional(),
   area: areaKeySchema.nullable().optional(),
   active: z.boolean().describe("Set false to pause the goal.").optional(),
   visibleOnDashboard: z.boolean().optional(),
@@ -335,3 +344,70 @@ export const removeRoutineInput = z
     label: z.string().trim().min(1).max(120).optional(),
   })
   .refine((v) => v.routineId || v.label, { message: "Give a routineId or a label", path: ["label"] });
+
+// --- Money -----------------------------------------------------------------
+
+const accountName = z
+  .string()
+  .trim()
+  .min(1)
+  .max(60)
+  .describe("Account name, matched loosely (e.g. \"HDFC\", \"cash\", \"credit card\").")
+  .optional();
+
+export const logExpenseInput = z.object({
+  amount: amountSchema.describe("Amount spent, in the user's currency."),
+  category: expenseCategorySchema.describe("Defaults to other.").optional(),
+  label: z.string().trim().max(120).describe('What it was, e.g. "lunch", "auto to office".').optional(),
+  account: accountName,
+  timestamp: isoTimestampSchema.describe("Defaults to now.").optional(),
+  notes: z.string().trim().max(500).optional(),
+});
+
+export const logIncomeInput = z.object({
+  amount: amountSchema,
+  label: z.string().trim().max(120).describe('e.g. "salary", "freelance invoice #12".').optional(),
+  account: accountName,
+  timestamp: isoTimestampSchema.optional(),
+  notes: z.string().trim().max(500).optional(),
+});
+
+export const addBillInput = z.object({
+  name: z.string().trim().min(1).max(80),
+  amount: amountSchema,
+  dueDate: localDateSchema,
+  recurrence: billRecurrenceSchema.describe("none | monthly. Defaults to none.").optional(),
+  category: expenseCategorySchema.describe("Defaults to bills.").optional(),
+  account: accountName,
+  notes: z.string().trim().max(500).optional(),
+});
+
+export const payBillInput = z
+  .object({
+    billId: uuidSchema.optional(),
+    name: z.string().trim().min(1).max(80).describe("Bill name, matched loosely among pending bills.").optional(),
+    account: accountName,
+    date: localDateSchema.describe("Payment day. Defaults to today.").optional(),
+  })
+  .refine((v) => v.billId || v.name, { message: "Give a billId or a name", path: ["name"] });
+
+export const setAccountInput = z.object({
+  name: z.string().trim().min(1).max(60),
+  kind: accountKindSchema.describe("bank | cash | credit_card | wallet. Defaults to bank.").optional(),
+  balance: z
+    .number()
+    .finite()
+    .min(-100_000_000)
+    .max(100_000_000)
+    .describe("Current balance (for a credit card: amount currently owed). Overwrites the running balance.")
+    .optional(),
+  creditLimit: amountSchema.optional(),
+  statementDay: z.number().int().min(1).max(31).optional(),
+  dueDay: z.number().int().min(1).max(31).describe("Day of month the card payment is due.").optional(),
+});
+
+export const getMoneySummaryInput = z.object({});
+
+export const deleteTransactionInput = z.object({
+  transactionId: uuidSchema.describe("From get_money_summary's recent list."),
+});

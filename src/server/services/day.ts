@@ -8,6 +8,7 @@ import {
   sleepEntries,
   tasks,
   timeEntries,
+  transactions,
   waterLogs,
   weightEntries,
   workouts,
@@ -26,7 +27,8 @@ export async function loadDayFacts(
   startDate: LocalDate,
   endDate: LocalDate,
 ): Promise<Map<LocalDate, DayFacts>> {
-  const [food, water, weights, sleep, sessions, entries, time, doneTasks, sent] = await Promise.all([
+  const [food, water, weights, sleep, sessions, entries, time, doneTasks, sent, money] =
+    await Promise.all([
     db
       .select({
         localDate: foodLogs.localDate,
@@ -112,6 +114,17 @@ export async function loadDayFacts(
       .where(
         and(eq(applications.userId, userId), between(applications.appliedOn, startDate, endDate)),
       ),
+    db
+      .select({
+        localDate: transactions.localDate,
+        kind: transactions.kind,
+        category: transactions.category,
+        amount: transactions.amount,
+      })
+      .from(transactions)
+      .where(
+        and(eq(transactions.userId, userId), between(transactions.localDate, startDate, endDate)),
+      ),
   ]);
 
   const map = new Map<LocalDate, DayFacts>();
@@ -152,6 +165,15 @@ export async function loadDayFacts(
   for (const row of sent) {
     if (row.appliedOn) factsFor(row.appliedOn).applicationsSent += 1;
   }
+  for (const row of money) {
+    const facts = factsFor(row.localDate);
+    if (row.kind === "expense" || row.kind === "payment") {
+      facts.spendByCategory[row.category] = (facts.spendByCategory[row.category] ?? 0) + row.amount;
+    } else if (row.kind === "income") {
+      facts.income += row.amount;
+    }
+    // Transfers move money between accounts; they are neither spend nor income.
+  }
 
   for (const facts of map.values()) {
     facts.calories = round(facts.calories);
@@ -159,6 +181,10 @@ export async function loadDayFacts(
     facts.carbs = round(facts.carbs);
     facts.fat = round(facts.fat);
     facts.sleepHours = round(facts.sleepHours);
+    facts.income = round(facts.income);
+    for (const key of Object.keys(facts.spendByCategory)) {
+      facts.spendByCategory[key] = round(facts.spendByCategory[key]);
+    }
   }
 
   return map;

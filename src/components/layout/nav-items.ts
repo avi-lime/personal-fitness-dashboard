@@ -12,6 +12,7 @@ import {
   Scale,
   Target,
   Timer,
+  Wallet,
 } from "lucide-react";
 
 export interface NavItem {
@@ -27,7 +28,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/", label: "Today", icon: Home, mobile: true },
   { href: "/plan", label: "Plan", icon: CalendarDays, mobile: true },
   { href: "/tasks", label: "Tasks", icon: CheckSquare, mobile: true },
-  { href: "/time", label: "Time", icon: Timer, mobile: true },
+  { href: "/time", label: "Time", icon: Timer },
+  { href: "/money", label: "Money", icon: Wallet, mobile: true },
   { href: "/career", label: "Career", icon: Briefcase },
   { href: "/food", label: "Food", icon: Apple },
   { href: "/training", label: "Training", icon: Dumbbell },

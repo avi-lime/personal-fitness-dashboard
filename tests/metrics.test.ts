@@ -82,3 +82,17 @@ describe("parameterised metrics", () => {
     expect(metricLabel(null, null)).toBe("Manual entries");
   });
 });
+
+describe("money metrics", () => {
+  it("sums spend for one category or all, and income", () => {
+    const days = [
+      day("2026-09-15", { spendByCategory: { food: 250, transport: 80 }, income: 0 }),
+      day("2026-09-16", { spendByCategory: { food: 300 }, income: 50000 }),
+    ];
+    expect(resolveMetric("spend", "g", days, "food")).toBe(550);
+    expect(resolveMetric("spend", "g", days, null)).toBe(630);
+    expect(resolveMetric("income", "g", days)).toBe(50000);
+    expect(metricLabel("spend", "food")).toBe("Money spent · Food");
+    expect(metricLabel("spend", null)).toBe("Money spent");
+  });
+});

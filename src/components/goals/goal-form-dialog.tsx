@@ -34,6 +34,7 @@ import {
 } from "@/lib/domain";
 import { METRICS, METRIC_LIST } from "@/lib/metrics";
 import { AreaSelect } from "@/components/common/area-select";
+import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS } from "@/lib/domain";
 import type { GoalLike } from "@/lib/goals";
 
 const MANUAL = "manual";
@@ -60,7 +61,7 @@ interface FormState {
   unit: string;
   targetValue: string;
   metricKey: string;
-  metricParam: AreaKey | null;
+  metricParam: string | null;
   area: AreaKey | null;
   visibleOnDashboard: boolean;
   showInChecklist: boolean;
@@ -120,7 +121,7 @@ function initialState(goal?: GoalLike | null): FormState {
     unit: goal.unit ?? "",
     targetValue: goal.targetValue === null ? "" : String(goal.targetValue),
     metricKey: goal.metricKey ?? MANUAL,
-    metricParam: (goal.metricParam as AreaKey | null) ?? null,
+    metricParam: goal.metricParam,
     area: goal.area,
     visibleOnDashboard: goal.visibleOnDashboard,
     showInChecklist: goal.showInChecklist,
@@ -143,12 +144,13 @@ function GoalForm({ goal, onDone }: { goal?: GoalLike | null; onDone: () => void
     setForm((previous) => ({
       ...previous,
       metricKey: value,
-      metricParam: metric?.param ? (previous.metricParam ?? "study") : null,
+      metricParam: metric?.param?.required ? (previous.metricParam ?? "study") : null,
       unit: previous.unit || (metric?.defaultUnit ?? ""),
       type: metric?.suggestedType ?? previous.type,
     }));
   };
-  const paramNeeded = form.metricKey !== MANUAL && Boolean(METRICS[form.metricKey as MetricKey]?.param);
+  const metricParam = form.metricKey !== MANUAL ? METRICS[form.metricKey as MetricKey]?.param : undefined;
+  const paramNeeded = Boolean(metricParam);
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -209,13 +211,33 @@ function GoalForm({ goal, onDone }: { goal?: GoalLike | null; onDone: () => void
             </Select>
           </Field>
 
-          {paramNeeded ? (
+          {paramNeeded && metricParam?.kind === "area" ? (
             <Field id="goal-param" label="Category" hint="Which tracked time counts towards this goal.">
               <AreaSelect
                 id="goal-param"
-                value={form.metricParam}
+                value={form.metricParam as AreaKey | null}
                 onChange={(value) => set("metricParam", value)}
               />
+            </Field>
+          ) : null}
+          {paramNeeded && metricParam?.kind === "expenseCategory" ? (
+            <Field id="goal-param" label="Category" hint="Leave on all spending, or pick one category.">
+              <Select
+                value={form.metricParam ?? "all"}
+                onValueChange={(value) => set("metricParam", value === "all" ? null : value)}
+              >
+                <SelectTrigger id="goal-param" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All spending</SelectItem>
+                  {EXPENSE_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {EXPENSE_CATEGORY_LABELS[category]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
           ) : null}
 

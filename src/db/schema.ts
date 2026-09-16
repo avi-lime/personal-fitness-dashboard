@@ -13,10 +13,15 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import type {
+  AccountKind,
   ApplicationStage,
   AreaKey,
+  BillRecurrence,
+  BillStatus,
   BlockKind,
   DashboardSectionVisibility,
+  ExpenseCategory,
+  TransactionKind,
   EntrySource,
   GoalPeriod,
   GoalType,
@@ -474,6 +479,85 @@ export const timeBlocks = pgTable(
   (table) => [index("time_blocks_day_idx").on(table.userId, table.localDate, table.startTime)],
 );
 
+/**
+ * `balance` is money available for bank/cash/wallet and money *owed* for a
+ * credit card (positive = outstanding). Every transaction adjusts it inside
+ * the same database transaction, so the two never drift.
+ */
+export const moneyAccounts = pgTable(
+  "money_accounts",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    kind: text("kind").$type<AccountKind>().notNull().default("bank"),
+    balance: doublePrecision("balance").notNull().default(0),
+    creditLimit: doublePrecision("credit_limit"),
+    statementDay: integer("statement_day"),
+    dueDay: integer("due_day"),
+    currency: text("currency").notNull().default("INR"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [uniqueIndex("money_accounts_user_name_idx").on(table.userId, table.name)],
+);
+
+export const transactions = pgTable(
+  "transactions",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => moneyAccounts.id, { onDelete: "set null" }),
+    /** Destination for transfers. */
+    transferAccountId: uuid("transfer_account_id").references(() => moneyAccounts.id, {
+      onDelete: "set null",
+    }),
+    /** Always positive; `kind` carries the direction. */
+    amount: doublePrecision("amount").notNull(),
+    kind: text("kind").$type<TransactionKind>().notNull().default("expense"),
+    category: text("category").$type<ExpenseCategory>().notNull().default("other"),
+    label: text("label"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    localDate: date("local_date").notNull(),
+    notes: text("notes"),
+    /** Groups rows from one statement import (reserved for CSV import). */
+    importBatchId: text("import_batch_id"),
+    source: text("source").$type<EntrySource>().notNull().default("web"),
+    createdAt: createdAt(),
+  },
+  (table) => [index("transactions_day_idx").on(table.userId, table.localDate)],
+);
+
+export const bills = pgTable(
+  "bills",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    amount: doublePrecision("amount").notNull(),
+    dueDate: date("due_date").notNull(),
+    recurrence: text("recurrence").$type<BillRecurrence>().notNull().default("none"),
+    category: text("category").$type<ExpenseCategory>().notNull().default("bills"),
+    accountId: uuid("account_id").references(() => moneyAccounts.id, { onDelete: "set null" }),
+    status: text("status").$type<BillStatus>().notNull().default("pending"),
+    paidTransactionId: uuid("paid_transaction_id").references(() => transactions.id, {
+      onDelete: "set null",
+    }),
+    notes: text("notes"),
+    source: text("source").$type<EntrySource>().notNull().default("web"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("bills_due_idx").on(table.userId, table.status, table.dueDate)],
+);
+
 /** Append-only audit trail for every mutation made through a tool. */
 export const mcpAuditLog = pgTable(
   "mcp_audit_log",
@@ -560,3 +644,6 @@ export type TimeEntry = typeof timeEntries.$inferSelect;
 export type Application = typeof applications.$inferSelect;
 export type Routine = typeof routines.$inferSelect;
 export type TimeBlock = typeof timeBlocks.$inferSelect;
+export type MoneyAccount = typeof moneyAccounts.$inferSelect;
+export type Transaction = typeof transactions.$inferSelect;
+export type Bill = typeof bills.$inferSelect;

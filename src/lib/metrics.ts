@@ -1,4 +1,11 @@
-import { AREA_LABELS, type AreaKey, type GoalType, type MetricKey } from "./domain";
+import {
+  AREA_LABELS,
+  EXPENSE_CATEGORY_LABELS,
+  type AreaKey,
+  type ExpenseCategory,
+  type GoalType,
+  type MetricKey,
+} from "./domain";
 import type { LocalDate } from "./date";
 
 /**
@@ -24,6 +31,9 @@ export interface DayFacts {
   tasksCompleted: number;
   /** Job applications whose `appliedOn` is this day. */
   applicationsSent: number;
+  /** Expenses and bill payments by category, in the profile currency. */
+  spendByCategory: Record<string, number>;
+  income: number;
 }
 
 export function emptyDayFacts(date: LocalDate): DayFacts {
@@ -41,6 +51,8 @@ export function emptyDayFacts(date: LocalDate): DayFacts {
     minutesByCategory: {},
     tasksCompleted: 0,
     applicationsSent: 0,
+    spendByCategory: {},
+    income: 0,
   };
 }
 
@@ -57,7 +69,9 @@ export type MetricAggregation = "sum" | "latest";
  * against the kind declared here.
  */
 export interface MetricParam {
-  kind: "area";
+  kind: "area" | "expenseCategory";
+  /** Optional parameters mean "all" when absent (e.g. total spend). */
+  required: boolean;
   label: string;
 }
 
@@ -149,7 +163,7 @@ export const METRICS: Readonly<Record<MetricKey, MetricDefinition>> = {
     defaultUnit: "h",
     suggestedType: "duration",
     aggregation: "sum",
-    param: { kind: "area", label: "Category" },
+    param: { kind: "area", required: true, label: "Category" },
     // Goals are expressed in hours; sessions are stored in minutes.
     select: (f, param) => (param ? (f.minutesByCategory[param] ?? 0) / 60 : 0),
   },
@@ -169,6 +183,26 @@ export const METRICS: Readonly<Record<MetricKey, MetricDefinition>> = {
     aggregation: "sum",
     select: (f) => f.applicationsSent,
   },
+  spend: {
+    key: "spend",
+    label: "Money spent",
+    defaultUnit: "",
+    suggestedType: "numeric",
+    aggregation: "sum",
+    param: { kind: "expenseCategory", required: false, label: "Category" },
+    select: (f, param) =>
+      param
+        ? (f.spendByCategory[param] ?? 0)
+        : Object.values(f.spendByCategory).reduce((sum, value) => sum + value, 0),
+  },
+  income: {
+    key: "income",
+    label: "Income received",
+    defaultUnit: "",
+    suggestedType: "numeric",
+    aggregation: "sum",
+    select: (f) => f.income,
+  },
 };
 
 export const METRIC_LIST: MetricDefinition[] = Object.values(METRICS);
@@ -186,7 +220,10 @@ export function metricLabel(metricKey: MetricKey | null, metricParam: string | n
   if (metricKey === null) return "Manual entries";
   const metric = METRICS[metricKey];
   if (!metric.param || !metricParam) return metric.label;
-  const paramLabel = AREA_LABELS[metricParam as AreaKey] ?? metricParam;
+  const paramLabel =
+    metric.param.kind === "area"
+      ? (AREA_LABELS[metricParam as AreaKey] ?? metricParam)
+      : (EXPENSE_CATEGORY_LABELS[metricParam as ExpenseCategory] ?? metricParam);
   return `${metric.label} · ${paramLabel}`;
 }
 

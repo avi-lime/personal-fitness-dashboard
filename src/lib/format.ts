@@ -30,3 +30,16 @@ export function formatDuration(hours: number): string {
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
 }
+
+/** Currency formatting for the profile currency (whole units below 1000, else grouped). */
+export function formatMoney(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${formatValue(amount, 2)}`;
+  }
+}

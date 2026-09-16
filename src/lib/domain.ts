@@ -42,6 +42,8 @@ export const METRIC_KEYS = [
   "time_minutes",
   "tasks_completed",
   "applications_sent",
+  "spend",
+  "income",
 ] as const;
 export type MetricKey = (typeof METRIC_KEYS)[number];
 
@@ -99,6 +101,59 @@ export const APPLICATION_STAGE_LABELS: Record<ApplicationStage, string> = {
   offer: "Offer",
   rejected: "Rejected",
 };
+
+/** Spending categories — closed for the same reason as areas. */
+export const EXPENSE_CATEGORIES = [
+  "food",
+  "transport",
+  "rent",
+  "utilities",
+  "shopping",
+  "health",
+  "entertainment",
+  "subscriptions",
+  "education",
+  "bills",
+  "other",
+] as const;
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  food: "Food",
+  transport: "Transport",
+  rent: "Rent",
+  utilities: "Utilities",
+  shopping: "Shopping",
+  health: "Health",
+  entertainment: "Entertainment",
+  subscriptions: "Subscriptions",
+  education: "Education",
+  bills: "Bills",
+  other: "Other",
+};
+
+export const ACCOUNT_KINDS = ["bank", "cash", "credit_card", "wallet"] as const;
+export type AccountKind = (typeof ACCOUNT_KINDS)[number];
+
+export const ACCOUNT_KIND_LABELS: Record<AccountKind, string> = {
+  bank: "Bank",
+  cash: "Cash",
+  credit_card: "Credit card",
+  wallet: "Wallet",
+};
+
+/**
+ * expense/payment reduce available money (or grow what a card owes);
+ * income adds; transfer moves between accounts (paying a card is a transfer).
+ */
+export const TRANSACTION_KINDS = ["expense", "income", "transfer", "payment"] as const;
+export type TransactionKind = (typeof TRANSACTION_KINDS)[number];
+
+export const BILL_RECURRENCES = ["none", "monthly"] as const;
+export type BillRecurrence = (typeof BILL_RECURRENCES)[number];
+
+export const BILL_STATUSES = ["pending", "paid"] as const;
+export type BillStatus = (typeof BILL_STATUSES)[number];
 
 /** What a planned block of the day is for. */
 export const BLOCK_KINDS = ["routine", "task", "meal", "workout", "study", "other"] as const;

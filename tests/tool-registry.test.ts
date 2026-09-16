@@ -7,7 +7,7 @@ import { TOOLS, toOpenAiTools, toolByName } from "@/mcp/registry";
  */
 describe("tool registry", () => {
   it("exposes the expected tools with unique names", () => {
-    expect(TOOLS.length).toBe(35);
+    expect(TOOLS.length).toBe(42);
     const names = TOOLS.map((tool) => tool.name);
     expect(new Set(names).size).toBe(names.length);
     expect(toolByName.get("log_water")?.kind).toBe("write");
@@ -16,7 +16,13 @@ describe("tool registry", () => {
 
   it("marks exactly the destructive tools", () => {
     const destructive = TOOLS.filter((tool) => tool.kind === "destructive").map((t) => t.name);
-    expect(destructive).toEqual(["remove_goal", "delete_task", "archive_application", "remove_routine"]);
+    expect(destructive).toEqual([
+      "remove_goal",
+      "delete_task",
+      "archive_application",
+      "remove_routine",
+      "delete_transaction",
+    ]);
     for (const name of destructive) {
       expect(typeof toolByName.get(name)?.describe).toBe("function");
     }

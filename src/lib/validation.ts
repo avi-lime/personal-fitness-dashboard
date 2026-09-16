@@ -1,8 +1,11 @@
 import { z } from "zod";
 import {
+  ACCOUNT_KINDS,
   APPLICATION_STAGES,
   AREA_KEYS,
+  BILL_RECURRENCES,
   BLOCK_KINDS,
+  EXPENSE_CATEGORIES,
   GOAL_PERIODS,
   GOAL_TYPES,
   MEAL_TYPES,
@@ -82,10 +85,19 @@ export function validateMetricParam(
   const metric = METRICS[key as keyof typeof METRICS];
   if (!metric) return;
   if (metric.param) {
-    if (param === null || !(AREA_KEYS as readonly string[]).includes(param)) {
+    const allowed: readonly string[] = metric.param.kind === "area" ? AREA_KEYS : EXPENSE_CATEGORIES;
+    if (param === null) {
+      if (metric.param.required) {
+        ctx.addIssue({
+          code: "custom",
+          message: `${metric.label} needs metricParam set to one of: ${allowed.join(", ")}`,
+          path: ["metricParam"],
+        });
+      }
+    } else if (!allowed.includes(param)) {
       ctx.addIssue({
         code: "custom",
-        message: `${metric.label} needs metricParam set to one of: ${AREA_KEYS.join(", ")}`,
+        message: `${metric.label} takes metricParam from: ${allowed.join(", ")}`,
         path: ["metricParam"],
       });
     }
@@ -340,3 +352,66 @@ export const timeBlockInputSchema = z
   })
   .refine(endsAfterStart, { message: "End time must be after start time", path: ["endTime"] });
 export type TimeBlockInput = z.infer<typeof timeBlockInputSchema>;
+
+// --- Money -----------------------------------------------------------------
+
+export const expenseCategorySchema = z.enum(EXPENSE_CATEGORIES);
+export const accountKindSchema = z.enum(ACCOUNT_KINDS);
+export const billRecurrenceSchema = z.enum(BILL_RECURRENCES);
+
+/** Money amounts: positive, finite, sane for a personal ledger. */
+export const amountSchema = bounded(100_000_000, "Amount", 0.01);
+
+export const accountInputSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(60),
+  kind: accountKindSchema.default("bank"),
+  balance: z.number().finite().min(-100_000_000).max(100_000_000).nullish(),
+  creditLimit: bounded(100_000_000, "Credit limit").nullish(),
+  statementDay: z.number().int().min(1).max(31).nullish(),
+  dueDay: z.number().int().min(1).max(31).nullish(),
+});
+export type AccountInput = z.infer<typeof accountInputSchema>;
+
+export const expenseInputSchema = z.object({
+  amount: amountSchema,
+  category: expenseCategorySchema.default("other"),
+  label: z.string().trim().max(120).nullish(),
+  accountId: uuidSchema.nullish(),
+  occurredAt: isoTimestampSchema.nullish(),
+  notes: z.string().trim().max(500).nullish(),
+});
+export type ExpenseInput = z.infer<typeof expenseInputSchema>;
+
+export const incomeInputSchema = z.object({
+  amount: amountSchema,
+  label: z.string().trim().max(120).nullish(),
+  accountId: uuidSchema.nullish(),
+  occurredAt: isoTimestampSchema.nullish(),
+  notes: z.string().trim().max(500).nullish(),
+});
+export type IncomeInput = z.infer<typeof incomeInputSchema>;
+
+export const transferInputSchema = z
+  .object({
+    amount: amountSchema,
+    fromAccountId: uuidSchema,
+    toAccountId: uuidSchema,
+    label: z.string().trim().max(120).nullish(),
+    occurredAt: isoTimestampSchema.nullish(),
+  })
+  .refine((v) => v.fromAccountId !== v.toAccountId, {
+    message: "Pick two different accounts",
+    path: ["toAccountId"],
+  });
+export type TransferInput = z.infer<typeof transferInputSchema>;
+
+export const billInputSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(80),
+  amount: amountSchema,
+  dueDate: localDateSchema,
+  recurrence: billRecurrenceSchema.default("none"),
+  accountId: uuidSchema.nullish(),
+  category: expenseCategorySchema.default("bills"),
+  notes: z.string().trim().max(500).nullish(),
+});
+export type BillInput = z.infer<typeof billInputSchema>;
