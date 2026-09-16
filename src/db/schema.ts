@@ -138,6 +138,8 @@ export const foods = pgTable(
     fatG: doublePrecision("fat_g"),
     servingQuantity: doublePrecision("serving_quantity").notNull().default(1),
     servingUnit: text("serving_unit").notNull().default("serving"),
+    /** True when the macros came from an AI estimate rather than a label. */
+    estimated: boolean("estimated").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -161,6 +163,8 @@ export const foodLogs = pgTable(
     unit: text("unit").notNull().default("serving"),
     mealType: text("meal_type").$type<MealType>().notNull().default("other"),
     notes: text("notes"),
+    /** True when the macros are an AI estimate; shown with "≈" in the UI. */
+    estimated: boolean("estimated").notNull().default(false),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
     localDate: date("local_date").notNull(),
     source: text("source").$type<EntrySource>().notNull().default("web"),

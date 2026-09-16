@@ -95,7 +95,8 @@ export function FoodLogList({
                             {entry.notes ? ` · ${entry.notes}` : ""}
                           </p>
                         </div>
-                        <p className="tabular w-44 text-sm text-muted-foreground">
+                        <p className="tabular w-44 text-sm text-muted-foreground" title={entry.estimated ? "Estimated values" : undefined}>
+                          {entry.estimated ? "≈ " : ""}
                           {formatValue(entry.calories)} kcal
                           {entry.proteinG !== null ? ` · ${formatValue(entry.proteinG)}p` : ""}
                           {entry.carbsG !== null ? ` · ${formatValue(entry.carbsG)}c` : ""}

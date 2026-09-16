@@ -31,7 +31,7 @@ export default async function FoodPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">Food</h1>
+        <h1 className="font-display text-3xl">Food</h1>
         <p className="text-sm text-muted-foreground">
           Daily totals are calculated from the entries below — nothing is stored twice.
         </p>

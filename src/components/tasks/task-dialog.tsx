@@ -22,6 +22,8 @@ import {
 import { Field } from "@/components/common/field";
 import { AreaSelect } from "@/components/common/area-select";
 import { useAction } from "@/components/common/use-action";
+import { useEstimate } from "@/components/assistant/use-estimate";
+import { EstimateButton } from "@/components/assistant/estimate-button";
 import { createTaskAction, updateTaskAction } from "@/server/actions/tasks";
 import { TASK_PRIORITIES, type AreaKey, type TaskPriority } from "@/lib/domain";
 import type { Task } from "@/db/schema";
@@ -56,7 +58,19 @@ function TaskForm({ task, onDone }: { task?: Task | null; onDone: () => void }) 
   const [dueDate, setDueDate] = useState(task?.dueDate ?? "");
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "medium");
   const [notes, setNotes] = useState(task?.notes ?? "");
+  const [reason, setReason] = useState("");
   const { pending, run } = useAction();
+  const estimator = useEstimate();
+
+  const suggestFields = async () => {
+    const result = await estimator.estimate("task_fields", { title: title.trim() });
+    if (!result) return;
+    setTitle(result.title);
+    setArea(result.area);
+    setPriority(result.priority);
+    if (result.dueDate) setDueDate(result.dueDate);
+    setReason(result.reason);
+  };
 
   return (
     <form
@@ -80,14 +94,24 @@ function TaskForm({ task, onDone }: { task?: Task | null; onDone: () => void }) 
       }}
     >
       <Field id="task-title" label="Title">
-        <Input
-          id="task-title"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          required
-          autoFocus
-          placeholder="Update resume"
-        />
+        <div className="flex gap-2">
+          <Input
+            id="task-title"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            required
+            autoFocus
+            placeholder="Update resume by Friday"
+          />
+          <EstimateButton
+            onClick={() => void suggestFields()}
+            pending={estimator.pending}
+            disabled={title.trim() === ""}
+            label="Fill details"
+            title="Let the assistant pick area, priority and due date from the title"
+          />
+        </div>
+        {reason ? <p className="text-xs text-muted-foreground">{reason}</p> : null}
       </Field>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field id="task-area" label="Area">

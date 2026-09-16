@@ -190,6 +190,8 @@ export const foodLogInputSchema = z.object({
   notes: z.string().trim().max(500).nullish(),
   occurredAt: isoTimestampSchema.nullish(),
   foodId: uuidSchema.nullish(),
+  /** The macros are an estimate, not from a label or a scale. */
+  estimated: z.boolean().default(false),
 });
 export type FoodLogInput = z.infer<typeof foodLogInputSchema>;
 
@@ -201,6 +203,7 @@ export const foodInputSchema = z.object({
   fatG: macroSchema.nullish(),
   servingQuantity: quantitySchema.default(1),
   servingUnit: z.string().trim().max(20).default("serving"),
+  estimated: z.boolean().default(false),
 });
 
 export const waterInputSchema = z.object({

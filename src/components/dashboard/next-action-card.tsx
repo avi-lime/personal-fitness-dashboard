@@ -23,16 +23,21 @@ export function NextActionCard({
             <span className="size-1.5 rounded-full bg-brand" aria-hidden />
             Next
           </p>
-          <p className="font-display mt-2 flex items-start gap-2 text-3xl leading-tight lg:items-center lg:text-4xl">
+          <p className="mt-2 flex items-start gap-2 lg:items-center">
             {action.type !== "idle" ? (
-              <ArrowRight className="mt-1.5 size-6 shrink-0 text-brand lg:mt-0" aria-hidden />
+              <ArrowRight className="mt-2 size-6 shrink-0 text-brand lg:mt-0" aria-hidden />
             ) : null}
             {action.href ? (
-              <Link href={action.href} className="min-w-0 break-words hover:underline underline-offset-4">
+              <Link
+                href={action.href}
+                className="font-display text-hero min-w-0 break-words text-3xl leading-tight lg:text-4xl"
+              >
                 {action.label}
               </Link>
             ) : (
-              <span className="min-w-0 break-words">{action.label}</span>
+              <span className="font-display text-hero min-w-0 break-words text-3xl leading-tight lg:text-4xl">
+                {action.label}
+              </span>
             )}
           </p>
           {action.detail ? (

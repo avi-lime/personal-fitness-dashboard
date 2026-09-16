@@ -15,7 +15,7 @@ export default async function TrainingPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">Training</h1>
+        <h1 className="font-display text-3xl">Training</h1>
         <p className="text-sm text-muted-foreground">
           Sessions, sets and templates. Previous performance is shown inside each workout.
         </p>

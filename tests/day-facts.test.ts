@@ -39,6 +39,7 @@ suite("daily aggregation", () => {
       unit: "serving",
       mealType: "snack",
       occurredAt: "2026-09-08T19:00:00Z",
+      estimated: false,
     });
     // 17:00 UTC on the 8th is still the 8th locally (22:30).
     await logFood(userId, timezone, {
@@ -49,6 +50,7 @@ suite("daily aggregation", () => {
       unit: "serving",
       mealType: "dinner",
       occurredAt: "2026-09-08T17:00:00Z",
+      estimated: false,
     });
 
     const facts = densify(

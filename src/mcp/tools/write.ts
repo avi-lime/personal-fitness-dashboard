@@ -50,11 +50,12 @@ export async function logFoodTool(ctx: McpContext, args: z.infer<typeof logFoodI
       mealType: args.mealType ?? "other",
       notes: args.notes ?? null,
       occurredAt: args.timestamp ?? null,
+      estimated: args.estimated ?? false,
     },
     ctx.source,
   );
 
-  const summary = `Logged ${formatValue(entry.calories)} kcal — ${entry.name} (${entry.mealType}) on ${entry.localDate}.`;
+  const summary = `Logged ${entry.estimated ? "≈" : ""}${formatValue(entry.calories)} kcal — ${entry.name} (${entry.mealType}) on ${entry.localDate}${entry.estimated ? " (estimated)" : ""}.`;
   await recordMutation(ctx.userId, "log_food", args, summary, ctx.source);
   return {
     summary,
@@ -67,6 +68,7 @@ export async function logFoodTool(ctx: McpContext, args: z.infer<typeof logFoodI
       carbsG: entry.carbsG,
       fatG: entry.fatG,
       mealType: entry.mealType,
+      estimated: entry.estimated,
       loggedAt: entry.occurredAt.toISOString(),
     },
   };

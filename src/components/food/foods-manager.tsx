@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Field } from "@/components/common/field";
 import { EmptyState } from "@/components/common/empty-state";
 import { useAction } from "@/components/common/use-action";
+import { useEstimate } from "@/components/assistant/use-estimate";
+import { EstimateButton } from "@/components/assistant/estimate-button";
 import { deleteFoodAction, logFoodAction, saveFoodAction } from "@/server/actions/logging";
 import { formatValue } from "@/lib/format";
 import type { Food } from "@/db/schema";
@@ -20,6 +22,8 @@ const BLANK = {
   fatG: "",
   servingQuantity: "1",
   servingUnit: "serving",
+  estimated: false,
+  assumption: "",
 };
 
 const optional = (value: string): number | null => {
@@ -32,9 +36,28 @@ const optional = (value: string): number | null => {
 export function FoodsManager({ foods }: { foods: Food[] }) {
   const [form, setForm] = useState(BLANK);
   const { pending, run } = useAction();
+  const estimator = useEstimate();
 
-  const set = <K extends keyof typeof BLANK>(key: K, value: string) =>
+  const set = <K extends keyof typeof BLANK>(key: K, value: (typeof BLANK)[K]) =>
     setForm((previous) => ({ ...previous, [key]: value }));
+
+  const estimateMacros = async () => {
+    const result = await estimator.estimate("food_macros", {
+      name: form.name.trim(),
+      quantity: optional(form.servingQuantity) ?? 1,
+      unit: form.servingUnit.trim() || "serving",
+    });
+    if (!result) return;
+    setForm((previous) => ({
+      ...previous,
+      calories: String(Math.round(result.calories)),
+      proteinG: String(Math.round(result.proteinG)),
+      carbsG: String(Math.round(result.carbsG)),
+      fatG: String(Math.round(result.fatG)),
+      estimated: true,
+      assumption: `${result.assumption} · ${result.confidence} confidence`,
+    }));
+  };
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -54,6 +77,7 @@ export function FoodsManager({ foods }: { foods: Food[] }) {
                     <p className="text-sm font-medium">{food.name}</p>
                     <p className="tabular text-xs text-muted-foreground">
                       {formatValue(food.servingQuantity)} {food.servingUnit} ·{" "}
+                      {food.estimated ? "≈ " : ""}
                       {formatValue(food.calories)} kcal
                       {food.proteinG !== null ? ` · ${formatValue(food.proteinG)}g protein` : ""}
                     </p>
@@ -114,18 +138,29 @@ export function FoodsManager({ foods }: { foods: Food[] }) {
                   fatG: optional(form.fatG),
                   servingQuantity: optional(form.servingQuantity) ?? 1,
                   servingUnit: form.servingUnit.trim() || "serving",
+                  estimated: form.estimated,
                 }),
               { success: "Food saved", onSuccess: () => setForm(BLANK) },
             );
           }}
         >
           <Field id="new-food-name" label="Name">
-            <Input
-              id="new-food-name"
-              value={form.name}
-              onChange={(event) => set("name", event.target.value)}
-              required
-            />
+            <div className="flex gap-2">
+              <Input
+                id="new-food-name"
+                value={form.name}
+                onChange={(event) => set("name", event.target.value)}
+                required
+              />
+              <EstimateButton
+                onClick={() => void estimateMacros()}
+                pending={estimator.pending}
+                disabled={form.name.trim() === ""}
+              />
+            </div>
+            {form.assumption ? (
+              <p className="text-xs text-muted-foreground">≈ {form.assumption}</p>
+            ) : null}
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field id="new-food-calories" label="Calories">

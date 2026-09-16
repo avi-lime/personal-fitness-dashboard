@@ -32,6 +32,7 @@ export async function runQuickEntryAction(raw: string): Promise<ActionResult<{ m
           quantity: 1,
           unit: "serving",
           mealType: "other",
+          estimated: false,
         });
         break;
       case "food":
@@ -42,6 +43,7 @@ export async function runQuickEntryAction(raw: string): Promise<ActionResult<{ m
           quantity: 1,
           unit: "serving",
           mealType: intent.mealType ?? "other",
+          estimated: false,
         });
         break;
       case "weight":

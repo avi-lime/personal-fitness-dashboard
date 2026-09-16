@@ -34,7 +34,7 @@ export default async function BodyPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">Body</h1>
+        <h1 className="font-display text-3xl">Body</h1>
         <p className="text-sm text-muted-foreground">Weight, sleep and hydration history.</p>
       </div>
 

@@ -126,7 +126,7 @@ export const fitnessTools = [
     kind: "write",
     input: schemas.logFoodInput,
     description:
-      "Records one food entry. Calories are required; protein, carbs and fat are optional — omit them rather than estimating. Defaults to now and meal type 'other'.",
+      "Records one food entry. Calories are required; protein, carbs and fat are optional. If the user gives no figures, you may use typical values for the food and quantity and MUST set estimated:true — the entry is then marked ≈. Defaults to now and meal type 'other'.",
     run: (ctx, args) => write.logFoodTool(ctx, args),
   }),
   defineTool({

@@ -36,7 +36,7 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">History</h1>
+          <h1 className="font-display text-3xl">History</h1>
           <p className="text-sm text-muted-foreground">
             Averages are taken over the {summary.daysWithData} days that have data.
           </p>

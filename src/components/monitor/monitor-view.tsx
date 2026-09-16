@@ -100,8 +100,8 @@ export function MonitorView({ initial }: { initial: MonitorPayload }) {
             <span className="size-2 rounded-full bg-brand" aria-hidden />
             Next
           </p>
-          <p className="font-display mt-3 text-[clamp(2.2rem,6vw,5rem)] leading-none">
-            {data.nextAction.label}
+          <p className="mt-3 text-[clamp(2.2rem,6vw,5rem)] leading-none">
+            <span className="font-display text-hero">{data.nextAction.label}</span>
           </p>
           <p className="tabular mt-3 text-[clamp(1rem,1.5vw,1.5rem)] text-muted-foreground">
             {data.nextAction.detail ??

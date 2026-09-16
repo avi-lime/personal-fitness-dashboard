@@ -31,7 +31,7 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Weekly review</h1>
+          <h1 className="font-display text-3xl">Weekly review</h1>
           <p className="text-sm text-muted-foreground">
             {formatLongDate(review.weekStart, timezone)} — {formatLongDate(review.weekEnd, timezone)}
           </p>

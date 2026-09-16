@@ -67,6 +67,12 @@ export const logFoodInput = z.object({
   mealType: mealTypeSchema.describe("Which meal this belongs to.").optional(),
   timestamp: isoTimestampSchema.describe("When it was eaten. Defaults to now.").optional(),
   notes: z.string().trim().max(500).optional(),
+  estimated: z
+    .boolean()
+    .describe(
+      "Set true when calories/macros are your typical-value estimate rather than figures the user gave. Estimates are shown with ≈.",
+    )
+    .optional(),
 });
 
 export const logWaterInput = z.object({

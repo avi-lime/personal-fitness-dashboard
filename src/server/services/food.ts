@@ -40,6 +40,7 @@ export async function logFood(
       unit: input.unit,
       mealType: input.mealType,
       notes: input.notes ?? null,
+      estimated: input.estimated,
       occurredAt,
       localDate,
       source,
@@ -67,6 +68,7 @@ export async function updateFoodLog(
       unit: input.unit,
       mealType: input.mealType,
       notes: input.notes ?? null,
+      estimated: input.estimated,
       occurredAt,
       localDate,
     })
@@ -108,6 +110,7 @@ export async function duplicateFoodLog(
       unit: original.unit,
       mealType: original.mealType,
       notes: original.notes,
+      estimated: original.estimated,
       occurredAt,
       localDate,
       source: "web",
@@ -135,6 +138,7 @@ export async function upsertFood(
     fatG?: number | null;
     servingQuantity: number;
     servingUnit: string;
+    estimated?: boolean;
   },
 ): Promise<Food> {
   const [saved] = await db
@@ -148,6 +152,7 @@ export async function upsertFood(
       fatG: input.fatG ?? null,
       servingQuantity: input.servingQuantity,
       servingUnit: input.servingUnit,
+      estimated: input.estimated ?? false,
     })
     .onConflictDoUpdate({
       target: [foods.userId, foods.name],
@@ -158,6 +163,7 @@ export async function upsertFood(
         fatG: input.fatG ?? null,
         servingQuantity: input.servingQuantity,
         servingUnit: input.servingUnit,
+        estimated: input.estimated ?? false,
       },
     })
     .returning();

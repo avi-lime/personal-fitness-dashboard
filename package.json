@@ -17,7 +17,8 @@
     "db:reset": "tsx scripts/reset.ts",
     "db:up": "docker start life-dashboard-db 2>/dev/null || docker compose up -d db",
     "db:down": "docker stop life-dashboard-db",
-    "assistant:smoke": "tsx --conditions=react-server scripts/assistant-smoke.ts"
+    "assistant:smoke": "tsx --conditions=react-server scripts/assistant-smoke.ts",
+    "assistant:estimate": "tsx --conditions=react-server scripts/estimate-smoke.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",

@@ -43,7 +43,7 @@ export function GoalManager({ goals }: { goals: GoalLike[] }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Goals</h1>
+          <h1 className="font-display text-3xl">Goals</h1>
           <p className="text-sm text-muted-foreground">
             Everything on the dashboard is generated from these.
           </p>

@@ -15,6 +15,8 @@ import {
 import { Field } from "@/components/common/field";
 import { EmptyState } from "@/components/common/empty-state";
 import { useAction } from "@/components/common/use-action";
+import { useEstimate } from "@/components/assistant/use-estimate";
+import { EstimateButton } from "@/components/assistant/estimate-button";
 import { deleteTransactionAction, logExpenseAction, logIncomeAction } from "@/server/actions/money";
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, type ExpenseCategory } from "@/lib/domain";
 import { formatMoney } from "@/lib/format";
@@ -39,7 +41,17 @@ export function MoneyLedger({
   const [label, setLabel] = useState("");
   const [accountId, setAccountId] = useState<string>(NO_ACCOUNT);
   const { pending, run } = useAction();
+  const estimator = useEstimate();
   const accountName = (id: string | null) => accounts.find((a) => a.id === id)?.name;
+
+  const suggestCategory = async () => {
+    const value = Number(amount.replace(",", "."));
+    const result = await estimator.estimate("expense_category", {
+      label: label.trim(),
+      amount: Number.isFinite(value) && value > 0 ? value : undefined,
+    });
+    if (result) setCategory(result.category);
+  };
 
   return (
     <div className="space-y-4">
@@ -99,7 +111,18 @@ export function MoneyLedger({
             </Field>
           ) : null}
           <Field id="tx-label" label="What" className="min-w-40 flex-1">
-            <Input id="tx-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={kind === "expense" ? "lunch" : "salary"} />
+            <div className="flex gap-2">
+              <Input id="tx-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={kind === "expense" ? "lunch" : "salary"} />
+              {kind === "expense" ? (
+                <EstimateButton
+                  onClick={() => void suggestCategory()}
+                  pending={estimator.pending}
+                  disabled={label.trim() === ""}
+                  label="Categorise"
+                  title="Pick the category from the description"
+                />
+              ) : null}
+            </div>
           </Field>
           {accounts.length > 0 ? (
             <Field id="tx-account" label="Account" className="w-40">
