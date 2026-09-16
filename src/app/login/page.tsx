@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
     <main className="flex min-h-dvh items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm">
         <div className="mb-8 space-y-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight">Life Dashboard</h1>
+          <h1 className="font-display text-4xl">Life Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             A private dashboard. Sign in with the credentials configured for this deployment.
           </p>

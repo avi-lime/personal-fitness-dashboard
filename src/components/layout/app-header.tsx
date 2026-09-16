@@ -5,6 +5,7 @@ import { Clock } from "@/components/layout/clock";
 import { NavLinks } from "@/components/layout/nav-links";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { QuickEntryButton } from "@/components/layout/quick-entry-button";
+import { AssistantMicButton } from "@/components/assistant/mic-button";
 import { logoutAction } from "@/server/actions/auth";
 import { formatLongDate, toLocalTime, type LocalDate } from "@/lib/date";
 
@@ -27,12 +28,13 @@ export function AppHeader({ date, timezone }: { date: LocalDate; timezone: strin
           </p>
         </div>
 
-        <div className="order-3 w-full lg:order-none lg:w-auto lg:flex-1 lg:px-4">
+        <div className="order-3 hidden w-full md:block lg:order-none lg:w-auto lg:flex-1 lg:px-4">
           <NavLinks />
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
           <QuickEntryButton />
+          <AssistantMicButton />
           <Button variant="ghost" size="icon" asChild>
             <Link href="/monitor" title="Monitor mode" aria-label="Open monitor mode">
               <MonitorPlay className="size-4" />

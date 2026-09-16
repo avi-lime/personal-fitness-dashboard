@@ -1,4 +1,6 @@
 import { AppHeader } from "@/components/layout/app-header";
+import { MobileNav } from "@/components/layout/mobile-nav";
+import { AssistantFab } from "@/components/assistant/mic-button";
 import { LogProvider } from "@/components/log/log-provider";
 import { requireContext } from "@/server/auth";
 import { listFoods } from "@/server/services/food";
@@ -30,9 +32,14 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         <AppHeader date={toLocalDate(new Date(), timezone)} timezone={timezone} />
-        <main id="main" className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 lg:px-6 lg:py-8">
+        <main
+          id="main"
+          className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 pb-28 md:pb-6 lg:px-6 lg:py-8"
+        >
           {children}
         </main>
+        <AssistantFab />
+        <MobileNav />
       </div>
     </LogProvider>
   );

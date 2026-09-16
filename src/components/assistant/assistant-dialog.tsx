@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CornerDownLeft, Sparkle } from "lucide-react";
+import { Check, CornerDownLeft, Mic, MicOff, Sparkle, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -18,6 +18,8 @@ import { runQuickEntryAction } from "@/server/actions/quick-entry";
 import { QUICK_ENTRY_EXAMPLES, describeIntent, parseQuickEntry } from "@/lib/quick-entry";
 import type { AssistantResponse, AssistantTurn, PendingAction } from "@/assistant/types";
 import { cn } from "@/lib/utils";
+import { useSpeechRecognition } from "./use-speech-recognition";
+import { useSpeechSynthesis } from "./use-speech-synthesis";
 
 interface Exchange {
   id: number;
@@ -39,14 +41,24 @@ export function AssistantDialog({
   open,
   onOpenChange,
   assistantEnabled,
+  autoListen = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assistantEnabled: boolean;
+  /** Start the microphone as soon as the dialog opens. */
+  autoListen?: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={false}>
+      <DialogContent
+        showCloseButton={false}
+        className={cn(
+          "gap-0 p-0 sm:max-w-lg",
+          // Bottom sheet on phones: full width, pinned above the keyboard.
+          "max-sm:top-auto max-sm:bottom-0 max-sm:max-w-full max-sm:translate-y-0 max-sm:rounded-b-none",
+        )}
+      >
         <DialogHeader className="sr-only">
           <DialogTitle>Quick entry and assistant</DialogTitle>
           <DialogDescription>
@@ -54,7 +66,11 @@ export function AssistantDialog({
           </DialogDescription>
         </DialogHeader>
         {open ? (
-          <AssistantPanel assistantEnabled={assistantEnabled} onDone={() => onOpenChange(false)} />
+          <AssistantPanel
+            assistantEnabled={assistantEnabled}
+            autoListen={autoListen}
+            onDone={() => onOpenChange(false)}
+          />
         ) : null}
       </DialogContent>
     </Dialog>
@@ -63,9 +79,11 @@ export function AssistantDialog({
 
 function AssistantPanel({
   assistantEnabled,
+  autoListen,
   onDone,
 }: {
   assistantEnabled: boolean;
+  autoListen: boolean;
   onDone: () => void;
 }) {
   const [value, setValue] = useState("");
@@ -78,8 +96,10 @@ function AssistantPanel({
   const { pending: quickPending, run } = useAction();
 
   const intent = useMemo(() => parseQuickEntry(value), [value]);
+  const tts = useSpeechSynthesis();
 
   const record = (heard: string, response: AssistantResponse) => {
+    tts.speak(response.reply);
     idRef.current += 1;
     setExchanges((previous) => [
       ...previous,
@@ -138,9 +158,8 @@ function AssistantPanel({
     if (response) record("Yes", response);
   };
 
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
-    const text = value.trim();
+  const submitText = (raw: string) => {
+    const text = raw.trim();
     if (!text || busy || quickPending) return;
     setValue("");
 
@@ -150,8 +169,9 @@ function AssistantPanel({
       return;
     }
 
-    if (intent) {
-      run(() => runQuickEntryAction(text), { success: describeIntent(intent), onSuccess: onDone });
+    const parsed = parseQuickEntry(text);
+    if (parsed) {
+      run(() => runQuickEntryAction(text), { success: describeIntent(parsed), onSuccess: onDone });
       return;
     }
     if (!assistantEnabled) {
@@ -161,6 +181,24 @@ function AssistantPanel({
     }
     void ask(text);
   };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    submitText(value);
+  };
+
+  // Dictation: interim text fills the box; the final utterance is submitted as-is.
+  const speech = useSpeechRecognition((text, final) => {
+    setValue(text);
+    if (final && text) submitText(text);
+  });
+  const { start: startListening, supported: speechSupported } = speech;
+  useEffect(() => {
+    if (autoListen && speechSupported) startListening();
+  }, [autoListen, speechSupported, startListening]);
+  useEffect(() => {
+    if (speech.error) toast.error(speech.error);
+  }, [speech.error]);
 
   const placeholder = assistantEnabled ? "+500 ml water · or tell the assistant what to do" : "+500 ml water";
 
@@ -207,20 +245,54 @@ function AssistantPanel({
       ) : null}
 
       <form onSubmit={submit} className="px-5 py-4">
-        <Input
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          placeholder={placeholder}
-          autoFocus
-          disabled={busy}
-          aria-label="Quick entry or assistant command"
-          className="h-12 text-base md:text-base"
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder={speech.listening ? "Listening…" : placeholder}
+            autoFocus={!autoListen}
+            disabled={busy}
+            aria-label="Quick entry or assistant command"
+            className="h-12 text-base md:text-base"
+          />
+          {speech.supported ? (
+            <Button
+              type="button"
+              variant={speech.listening ? "default" : "outline"}
+              size="icon-lg"
+              onClick={speech.toggle}
+              disabled={busy}
+              aria-pressed={speech.listening}
+              aria-label={speech.listening ? "Stop listening" : "Dictate"}
+              className={cn("size-12 shrink-0", speech.listening && "bg-brand text-brand-foreground hover:bg-brand/90")}
+            >
+              {speech.listening ? <MicOff className="size-5" /> : <Mic className="size-5" />}
+            </Button>
+          ) : null}
+          {tts.supported && assistantEnabled ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-lg"
+              onClick={() => tts.setEnabled(!tts.enabled)}
+              aria-pressed={tts.enabled}
+              aria-label={tts.enabled ? "Stop reading replies aloud" : "Read replies aloud"}
+              className="size-12 shrink-0"
+            >
+              {tts.enabled ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
+            </Button>
+          ) : null}
+        </div>
         <div className="mt-3 flex min-h-9 items-center gap-3 text-sm">
           <div className="flex-1" aria-live="polite">
             {busy ? (
               <p className="flex items-center gap-2 text-muted-foreground">
                 <Sparkle className="size-4 animate-pulse" aria-hidden /> Working…
+              </p>
+            ) : speech.listening ? (
+              <p className="flex items-center gap-2 text-muted-foreground">
+                <span className="size-2 animate-pulse rounded-full bg-brand" aria-hidden />
+                Say something like &ldquo;log 500 ml water&rdquo;
               </p>
             ) : value.trim() === "" ? (
               <p className="text-muted-foreground">

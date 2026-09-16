@@ -15,15 +15,16 @@ export function NextActionCard({
   checklistDone: number;
 }) {
   return (
-    <Card className="gap-0 p-5 lg:p-6">
+    <Card className="gap-0 bg-surface-3 p-5 ring-1 ring-foreground/10 lg:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          <p className="flex items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            <span className="size-1.5 rounded-full bg-brand" aria-hidden />
             Next
           </p>
-          <p className="mt-1.5 flex items-start gap-2 text-2xl font-semibold tracking-tight lg:items-center lg:text-3xl">
+          <p className="font-display mt-2 flex items-start gap-2 text-3xl leading-tight lg:items-center lg:text-4xl">
             {action.type === "goal" ? (
-              <ArrowRight className="mt-1 size-5 shrink-0 text-muted-foreground lg:mt-0" aria-hidden />
+              <ArrowRight className="mt-1.5 size-6 shrink-0 text-brand lg:mt-0" aria-hidden />
             ) : null}
             <span className="min-w-0 break-words">{action.label}</span>
           </p>

@@ -24,6 +24,6 @@ export const config = {
      * Everything except: the login page, the MCP endpoint (bearer auth),
      * Next internals and static assets.
      */
-    "/((?!login|api/mcp|api/auth|_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest).*)",
+    "/((?!login|api/mcp|api/auth|_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest).*)",
   ],
 };

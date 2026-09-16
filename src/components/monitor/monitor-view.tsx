@@ -65,10 +65,8 @@ export function MonitorView({ initial }: { initial: MonitorPayload }) {
       <div className="mx-auto flex h-full w-full max-w-[1800px] flex-col gap-10">
         <header className="flex flex-wrap items-start justify-between gap-6">
           <div>
-            <p className="tabular text-[clamp(4rem,13vw,11rem)] leading-[0.85] font-semibold tracking-tight">
-              {time}
-            </p>
-            <p className="mt-3 text-[clamp(1rem,1.6vw,1.6rem)] text-muted-foreground">
+            <p className="font-display text-[clamp(4rem,13vw,11rem)] leading-[0.85]">{time}</p>
+            <p className="font-display mt-3 text-[clamp(1.2rem,2vw,2rem)] text-muted-foreground">
               {data.dateLabel}
             </p>
           </div>
@@ -98,8 +96,11 @@ export function MonitorView({ initial }: { initial: MonitorPayload }) {
         </header>
 
         <section className="border-y py-8">
-          <p className="text-sm tracking-[0.2em] text-muted-foreground uppercase">Next</p>
-          <p className="mt-3 text-[clamp(2rem,5.5vw,4.5rem)] leading-none font-semibold tracking-tight">
+          <p className="flex items-center gap-3 text-sm tracking-[0.2em] text-muted-foreground uppercase">
+            <span className="size-2 rounded-full bg-brand" aria-hidden />
+            Next
+          </p>
+          <p className="font-display mt-3 text-[clamp(2.2rem,6vw,5rem)] leading-none">
             {data.nextAction.label}
           </p>
           <p className="tabular mt-3 text-[clamp(1rem,1.5vw,1.5rem)] text-muted-foreground">

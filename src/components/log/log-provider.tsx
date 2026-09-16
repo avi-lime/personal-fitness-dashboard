@@ -13,8 +13,14 @@ import type { Food } from "@/db/schema";
 
 export type LogDialogKind = "quick" | "food" | "water" | "weight" | "sleep" | "workout" | "note";
 
+export interface OpenOptions {
+  /** Start the microphone as the dialog opens (assistant dialog only). */
+  listen?: boolean;
+}
+
 interface LogContextValue {
-  open: (kind: LogDialogKind) => void;
+  open: (kind: LogDialogKind, options?: OpenOptions) => void;
+  assistantEnabled: boolean;
 }
 
 const LogContext = createContext<LogContextValue | null>(null);
@@ -51,23 +57,32 @@ export function LogProvider({
   assistantEnabled: boolean;
 }) {
   const [active, setActive] = useState<LogDialogKind | null>(null);
+  const [listen, setListen] = useState(false);
 
-  const open = useCallback((kind: LogDialogKind) => setActive(kind), []);
-  const value = useMemo(() => ({ open }), [open]);
+  const open = useCallback((kind: LogDialogKind, options: OpenOptions = {}) => {
+    setListen(Boolean(options.listen));
+    setActive(kind);
+  }, []);
+  const value = useMemo(() => ({ open, assistantEnabled }), [open, assistantEnabled]);
 
-  // Ctrl/Cmd+K opens quick entry from anywhere except while typing in a field.
+  // Ctrl/Cmd+K opens quick entry, Ctrl/Cmd+Shift+K opens it listening —
+  // from anywhere except while typing in a field.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== "k" || !(event.metaKey || event.ctrlKey)) return;
       if (isEditable(event.target)) return;
       event.preventDefault();
+      setListen(event.shiftKey);
       setActive("quick");
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const close = () => setActive(null);
+  const close = () => {
+    setActive(null);
+    setListen(false);
+  };
   const bind = (kind: LogDialogKind) => ({
     open: active === kind,
     onOpenChange: (next: boolean) => (next ? setActive(kind) : close()),
@@ -76,7 +91,7 @@ export function LogProvider({
   return (
     <LogContext.Provider value={value}>
       {children}
-      <AssistantDialog {...bind("quick")} assistantEnabled={assistantEnabled} />
+      <AssistantDialog {...bind("quick")} assistantEnabled={assistantEnabled} autoListen={listen} />
       <FoodDialog {...bind("food")} foods={foods} />
       <WaterDialog {...bind("water")} />
       <WeightDialog {...bind("weight")} suggested={latestWeight} />
