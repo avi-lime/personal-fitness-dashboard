@@ -92,7 +92,7 @@ routines, applications and money so every page has something to show. Rows it wr
 | `MCP_TOKEN` | no | Bearer token for `/api/mcp`. **Unset = MCP endpoint disabled.** `openssl rand -hex 32` |
 | `ASSISTANT_API_KEY` | no | API key for the assistant's model. **Unset = assistant hidden** (quick commands still work). Default provider is Gemini: get a key at <https://aistudio.google.com/apikey>. |
 | `ASSISTANT_BASE_URL` | no | Any OpenAI-compatible chat endpoint. Defaults to Gemini's (`https://generativelanguage.googleapis.com/v1beta/openai/`). |
-| `ASSISTANT_MODEL` | no | Model id. Defaults to `gemini-3.8-flash`. |
+| `ASSISTANT_MODEL` | no | Model id. Defaults to `gemini-3.6-flash` (run `curl …/v1beta/openai/models` with your key to see what your account offers). |
 
 The app validates these at startup and fails with a readable message if any are missing or too
 short. `.env.local` is git-ignored.

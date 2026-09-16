@@ -18,7 +18,7 @@ export interface ChatClient {
 
 export const DEFAULT_ASSISTANT_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/openai/";
-export const DEFAULT_ASSISTANT_MODEL = "gemini-3.8-flash";
+export const DEFAULT_ASSISTANT_MODEL = "gemini-3.6-flash";
 
 export function isAssistantConfigured(): boolean {
   try {
