@@ -32,7 +32,7 @@ export function TrainingCard({ workout, previousByExercise }: TrainingCardData) 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-medium">{workout.name}</h2>
-          <Badge variant={workout.completedAt ? "default" : "secondary"}>
+          <Badge variant={workout.completedAt ? "secondary" : "outline"}>
             {workout.completedAt ? "Completed" : "In progress"}
           </Badge>
         </div>

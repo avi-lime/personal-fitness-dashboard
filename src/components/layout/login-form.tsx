@@ -11,7 +11,7 @@ import type { ActionResult } from "@/lib/action-result";
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
+    <Button type="submit" size="lg" className="w-full" disabled={pending}>
       {pending ? "Signing in…" : "Sign in"}
     </Button>
   );
@@ -28,7 +28,7 @@ export function LoginForm({ next }: { next?: string }) {
       {next ? <input type="hidden" name="next" value={next} /> : null}
       <div className="space-y-2">
         <Label htmlFor="username">Username</Label>
-        <Input id="username" name="username" autoComplete="username" required autoFocus />
+        <Input id="username" name="username" autoComplete="username" required autoFocus className="h-10" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
@@ -38,6 +38,7 @@ export function LoginForm({ next }: { next?: string }) {
           type="password"
           autoComplete="current-password"
           required
+          className="h-10"
         />
       </div>
       {state && !state.ok ? (

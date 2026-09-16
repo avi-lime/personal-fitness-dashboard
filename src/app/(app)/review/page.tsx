@@ -131,7 +131,7 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
             {review.adherence.map((entry) => {
               const streak = review.streaks.find((item) => item.goalId === entry.goalId);
               return (
-                <li key={entry.goalId} className="space-y-1.5">
+                <li key={entry.goalId} className="space-y-2 py-1">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <span className="text-sm font-medium">{entry.name}</span>
                     <span className="tabular text-sm text-muted-foreground">
@@ -151,7 +151,7 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
                   </div>
                   <ProgressBar
                     value={entry.adherence}
-                    tone={entry.adherence >= 0.8 ? "positive" : entry.adherence < 0.5 ? "attention" : "neutral"}
+                    tone={entry.adherence >= 0.8 ? "positive" : "neutral"}
                     label={`${entry.name} adherence: ${formatPercent(entry.adherence)}`}
                   />
                 </li>

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmButton } from "@/components/common/confirm-button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/common/empty-state";
@@ -40,7 +42,7 @@ export function TaskManager({ tasks, today }: { tasks: Task[]; today: LocalDate 
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-3xl">Tasks</h1>
           <p className="text-sm text-muted-foreground">
@@ -76,17 +78,15 @@ export function TaskManager({ tasks, today }: { tasks: Task[]; today: LocalDate 
                   const done = task.status === "done";
                   return (
                     <li key={task.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={done}
                         disabled={pending}
-                        onChange={(event) =>
-                          run(() => setTaskDoneAction({ taskId: task.id, done: event.target.checked }), {
-                            success: event.target.checked ? "Task completed" : "Task reopened",
+                        onCheckedChange={(checked) =>
+                          run(() => setTaskDoneAction({ taskId: task.id, done: checked === true }), {
+                            success: checked === true ? "Task completed" : "Task reopened",
                           })
                         }
                         aria-label={`Mark "${task.title}" ${done ? "not done" : "done"}`}
-                        className="size-4 shrink-0 accent-foreground"
                       />
                       <div className="min-w-0 flex-1">
                         <p className={cn("flex items-center gap-2 text-sm", done && "text-muted-foreground line-through")}>
@@ -115,19 +115,18 @@ export function TaskManager({ tasks, today }: { tasks: Task[]; today: LocalDate 
                       >
                         <Pencil className="size-4" />
                       </Button>
-                      <Button
+                      <ConfirmButton
                         variant="ghost"
                         size="icon"
                         disabled={pending}
                         aria-label={`Delete ${task.title}`}
-                        onClick={() => {
-                          if (window.confirm(`Delete "${task.title}"?`)) {
-                            run(() => deleteTaskAction(task.id), { success: "Task deleted" });
-                          }
-                        }}
+                        title={`Delete "${task.title}"?`}
+                        description="This cannot be undone."
+                        confirmLabel="Delete"
+                        onConfirm={() => run(() => deleteTaskAction(task.id), { success: "Task deleted" })}
                       >
                         <Trash2 className="size-4" />
-                      </Button>
+                      </ConfirmButton>
                     </li>
                   );
                 })}

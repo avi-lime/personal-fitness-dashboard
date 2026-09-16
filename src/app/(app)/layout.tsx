@@ -34,7 +34,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <AppHeader date={toLocalDate(new Date(), timezone)} timezone={timezone} />
         <main
           id="main"
-          className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 pb-28 md:pb-6 lg:px-6 lg:py-8"
+          className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 pb-36 md:pb-6 lg:px-6 lg:py-8"
         >
           {children}
         </main>

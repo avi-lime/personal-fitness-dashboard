@@ -143,7 +143,7 @@ export function ProfileForm({
             </Select>
           </Field>
         </div>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" size="sm" disabled={pending}>
           Save profile
         </Button>
       </form>

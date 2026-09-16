@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Archive, CreditCard, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmButton } from "@/components/common/confirm-button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -52,23 +54,22 @@ export function AccountsPanel({ accounts, currency }: { accounts: MoneySummary["
                   {account.nextDueDate ? ` · due ${formatShortDate(account.nextDueDate)}` : ""}
                 </p>
               </div>
-              <span className={cn("tabular text-sm font-medium", account.kind === "credit_card" && account.balance > 0 && "text-brand")}>
+              <span className="tabular text-sm font-medium">
                 {account.kind === "credit_card" && account.balance > 0 ? "owes " : ""}
                 {formatMoney(account.balance, currency)}
               </span>
-              <Button
+              <ConfirmButton
                 variant="ghost"
                 size="icon"
                 disabled={pending}
                 aria-label={`Archive ${account.name}`}
-                onClick={() => {
-                  if (window.confirm(`Archive account "${account.name}"?`)) {
-                    run(() => archiveAccountAction(account.id), { success: "Account archived" });
-                  }
-                }}
+                title={`Archive "${account.name}"?`}
+                description="Its transactions are kept; the account just leaves the list."
+                confirmLabel="Archive"
+                onConfirm={() => run(() => archiveAccountAction(account.id), { success: "Account archived" })}
               >
                 <Archive className="size-4" />
-              </Button>
+              </ConfirmButton>
             </li>
           ))}
         </ul>
@@ -116,7 +117,7 @@ export function AccountsPanel({ accounts, currency }: { accounts: MoneySummary["
         ) : (
           <div />
         )}
-        <Button type="submit" variant="secondary" className="col-span-2" disabled={pending || !name.trim()}>
+        <Button type="submit" size="sm" className="col-span-2" disabled={pending || !name.trim()}>
           Save account
         </Button>
       </form>
@@ -193,10 +194,10 @@ export function BillsPanel({
           <Input id="bill-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} required />
         </Field>
         <label className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground">
-          <input type="checkbox" checked={monthly} onChange={(e) => setMonthly(e.target.checked)} className="size-4 accent-foreground" />
+          <Checkbox checked={monthly} onCheckedChange={(checked) => setMonthly(checked === true)} />
           Repeats monthly
         </label>
-        <Button type="submit" variant="secondary" className="col-span-2" disabled={pending || !name.trim() || !amount || !dueDate}>
+        <Button type="submit" size="sm" className="col-span-2" disabled={pending || !name.trim() || !amount || !dueDate}>
           Add bill
         </Button>
       </form>

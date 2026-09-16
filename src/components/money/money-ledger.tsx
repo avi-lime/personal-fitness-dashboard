@@ -5,6 +5,8 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ConfirmButton } from "@/components/common/confirm-button";
 import {
   Select,
   SelectContent,
@@ -58,16 +60,19 @@ export function MoneyLedger({
       <Card className="gap-3 p-4">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-medium">Log</h2>
-          <div className="ml-auto flex gap-1" role="group" aria-label="Kind">
-            {(["expense", "income"] as const).map((option) => (
-              <Button key={option} size="sm" variant={kind === option ? "default" : "ghost"} onClick={() => setKind(option)} aria-pressed={kind === option} className="capitalize">
-                {option}
-              </Button>
-            ))}
-          </div>
+          <ToggleGroup
+            type="single"
+            value={kind}
+            onValueChange={(value) => value && setKind(value as "expense" | "income")}
+            aria-label="Kind"
+            className="ml-auto"
+          >
+            <ToggleGroupItem value="expense" size="sm">Expense</ToggleGroupItem>
+            <ToggleGroupItem value="income" size="sm">Income</ToggleGroupItem>
+          </ToggleGroup>
         </div>
         <form
-          className="flex flex-wrap items-end gap-3"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3"
           onSubmit={(event) => {
             event.preventDefault();
             const value = Number(amount.replace(",", "."));
@@ -91,11 +96,11 @@ export function MoneyLedger({
             );
           }}
         >
-          <Field id="tx-amount" label="Amount" className="w-32">
+          <Field id="tx-amount" label="Amount">
             <Input id="tx-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="250" required autoFocus />
           </Field>
           {kind === "expense" ? (
-            <Field id="tx-category" label="Category" className="w-40">
+            <Field id="tx-category" label="Category">
               <Select value={category} onValueChange={(value) => setCategory(value as ExpenseCategory)}>
                 <SelectTrigger id="tx-category" className="w-full">
                   <SelectValue />
@@ -110,22 +115,11 @@ export function MoneyLedger({
               </Select>
             </Field>
           ) : null}
-          <Field id="tx-label" label="What" className="min-w-40 flex-1">
-            <div className="flex gap-2">
-              <Input id="tx-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={kind === "expense" ? "lunch" : "salary"} />
-              {kind === "expense" ? (
-                <EstimateButton
-                  onClick={() => void suggestCategory()}
-                  pending={estimator.pending}
-                  disabled={label.trim() === ""}
-                  label="Categorise"
-                  title="Pick the category from the description"
-                />
-              ) : null}
-            </div>
+          <Field id="tx-label" label="What" className="col-span-2 sm:col-span-3">
+            <Input id="tx-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={kind === "expense" ? "lunch" : "salary"} />
           </Field>
           {accounts.length > 0 ? (
-            <Field id="tx-account" label="Account" className="w-40">
+            <Field id="tx-account" label="Account">
               <Select value={accountId} onValueChange={setAccountId}>
                 <SelectTrigger id="tx-account" className="w-full">
                   <SelectValue />
@@ -141,9 +135,20 @@ export function MoneyLedger({
               </Select>
             </Field>
           ) : null}
-          <Button type="submit" disabled={pending || !amount}>
-            {kind === "expense" ? "Log expense" : "Log income"}
-          </Button>
+          <div className="col-span-2 flex justify-end gap-2 sm:col-span-3">
+            {kind === "expense" ? (
+              <EstimateButton
+                onClick={() => void suggestCategory()}
+                pending={estimator.pending}
+                disabled={label.trim() === ""}
+                label="Categorise"
+                title="Pick the category from the description"
+              />
+            ) : null}
+            <Button type="submit" size="sm" disabled={pending || !amount}>
+              {kind === "expense" ? "Log expense" : "Log income"}
+            </Button>
+          </div>
         </form>
       </Card>
 
@@ -151,7 +156,7 @@ export function MoneyLedger({
         <h2 className="border-b px-4 py-2.5 text-sm font-medium">Recent</h2>
         {transactions.length === 0 ? (
           <div className="p-4">
-            <EmptyState title="No transactions yet" description='Log one above, or say "I spent 250 on lunch".' />
+            <EmptyState title="No transactions yet." description='Log one above, or say "I spent 250 on lunch".' />
           </div>
         ) : (
           <ul className="divide-y">
@@ -169,19 +174,18 @@ export function MoneyLedger({
                   {tx.kind === "income" ? "+" : tx.kind === "transfer" ? "↔" : "−"}
                   {formatMoney(tx.amount, currency)}
                 </span>
-                <Button
+                <ConfirmButton
                   variant="ghost"
                   size="icon"
                   disabled={pending}
                   aria-label="Delete transaction"
-                  onClick={() => {
-                    if (window.confirm("Delete this transaction and reverse its balance effect?")) {
-                      run(() => deleteTransactionAction(tx.id), { success: "Transaction deleted" });
-                    }
-                  }}
+                  title="Delete this transaction?"
+                  description="Its effect on the account balance is reversed."
+                  confirmLabel="Delete"
+                  onConfirm={() => run(() => deleteTransactionAction(tx.id), { success: "Transaction deleted" })}
                 >
                   <Trash2 className="size-4" />
-                </Button>
+                </ConfirmButton>
               </li>
             ))}
           </ul>

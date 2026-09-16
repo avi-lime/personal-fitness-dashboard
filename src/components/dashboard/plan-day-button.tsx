@@ -9,7 +9,6 @@ export function PlanDayButton() {
   return (
     <Button
       size="sm"
-      variant="secondary"
       disabled={pending}
       onClick={() => run(() => planDayAction(null), { success: "Day planned from your routines" })}
     >

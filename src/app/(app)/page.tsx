@@ -9,6 +9,8 @@ import { PlanCard } from "@/components/dashboard/plan-card";
 import { TasksCard } from "@/components/dashboard/tasks-card";
 import { MoneyCard } from "@/components/dashboard/money-card";
 import { CareerCard } from "@/components/dashboard/career-card";
+import { BriefingCard } from "@/components/assistant/briefing-card";
+import { isAssistantConfigured } from "@/assistant/client";
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -43,6 +45,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-5">
+      <h1 className="sr-only">Today</h1>
       {sections.nextAction ? (
         <NextActionCard
           action={snapshot.nextAction}
@@ -75,11 +78,13 @@ export default async function DashboardPage() {
                   }
                 />
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                <div className="flex flex-wrap gap-3">
                   {dashboardGoals.map((goal) => {
                     const progress = snapshot.progressById.get(goal.id);
                     return progress ? (
-                      <GoalCard key={goal.id} goal={goal} progress={progress} />
+                      <div key={goal.id} className="min-w-[13rem] flex-[1_1_13rem]">
+                        <GoalCard goal={goal} progress={progress} />
+                      </div>
                     ) : null;
                   })}
                 </div>
@@ -116,6 +121,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="space-y-5">
+          {isAssistantConfigured() ? <BriefingCard date={snapshot.date} /> : null}
           {sections.quickActions ? <QuickActions /> : null}
           {sections.money ? (
             <MoneyCard
@@ -127,7 +133,11 @@ export default async function DashboardPage() {
             />
           ) : null}
           {sections.career ? (
-            <CareerCard active={snapshot.career.active} nextStepsDue={snapshot.career.nextStepsDue} />
+            <CareerCard
+              active={snapshot.career.active}
+              nextStepsDue={snapshot.career.nextStepsDue}
+              today={snapshot.date}
+            />
           ) : null}
           {sections.weekly ? (
             <WeekCard

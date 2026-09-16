@@ -25,7 +25,7 @@ export function WeekCard({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <Stat label="Calories" value={formatValue(summary.averages.calories)} detail="daily avg" />
         <Stat label="Protein" value={`${formatValue(summary.averages.protein)} g`} detail="daily avg" />
         <Stat
@@ -46,7 +46,7 @@ export function WeekCard({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 border-t pt-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 border-t pt-3">
         <TrendCell label="Calories" values={days.map((day) => day.calories)} />
         <TrendCell label="Protein" values={days.map((day) => day.protein)} />
         <TrendCell label="Water" values={days.map((day) => day.waterMl)} />

@@ -8,6 +8,16 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field } from "@/components/common/field";
+import { ConfirmButton } from "@/components/common/confirm-button";
 import { EmptyState } from "@/components/common/empty-state";
 import { useAction } from "@/components/common/use-action";
 import { SetRow } from "@/components/workouts/set-row";
@@ -33,6 +43,8 @@ export function WorkoutEditor({
 }) {
   const [exerciseName, setExerciseName] = useState("");
   const [muscleGroup, setMuscleGroup] = useState("");
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [templateName, setTemplateName] = useState(workout.name);
   const { pending, run } = useAction();
   const router = useRouter();
 
@@ -40,9 +52,9 @@ export function WorkoutEditor({
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <h1 className="font-display flex flex-wrap items-center gap-3 text-3xl">
             {workout.name}
-            <Badge variant={workout.completedAt ? "default" : "secondary"}>
+            <Badge variant={workout.completedAt ? "secondary" : "outline"}>
               {workout.completedAt ? "Completed" : "In progress"}
             </Badge>
           </h1>
@@ -70,32 +82,56 @@ export function WorkoutEditor({
             variant="outline"
             size="sm"
             disabled={pending || workout.exercises.length === 0}
-            onClick={() => {
-              const name = window.prompt("Template name", workout.name);
-              if (name?.trim()) {
-                run(() => saveWorkoutTemplateAction({ workoutId: workout.id, name: name.trim() }), {
-                  success: "Template saved",
-                });
-              }
-            }}
+            onClick={() => setTemplateOpen(true)}
           >
             Save as template
           </Button>
-          <Button
+          <ConfirmButton
             variant="ghost"
             size="sm"
             disabled={pending}
-            onClick={() => {
-              if (window.confirm(`Delete "${workout.name}"? This cannot be undone.`)) {
-                run(() => deleteWorkoutAction(workout.id), {
-                  success: "Workout deleted",
-                  onSuccess: () => router.push("/training"),
-                });
-              }
-            }}
+            title={`Delete "${workout.name}"?`}
+            description="This cannot be undone."
+            confirmLabel="Delete"
+            onConfirm={() =>
+              run(() => deleteWorkoutAction(workout.id), {
+                success: "Workout deleted",
+                onSuccess: () => router.push("/training"),
+              })
+            }
           >
             <Trash2 className="size-4" aria-hidden /> Delete
-          </Button>
+          </ConfirmButton>
+          <Dialog open={templateOpen} onOpenChange={setTemplateOpen}>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Save as template</DialogTitle>
+                <DialogDescription>Exercises and set counts are reused; weights are not.</DialogDescription>
+              </DialogHeader>
+              <form
+                className="space-y-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  run(() => saveWorkoutTemplateAction({ workoutId: workout.id, name: templateName.trim() }), {
+                    success: "Template saved",
+                    onSuccess: () => setTemplateOpen(false),
+                  });
+                }}
+              >
+                <Field id="template-name" label="Template name">
+                  <Input id="template-name" value={templateName} onChange={(e) => setTemplateName(e.target.value)} required autoFocus />
+                </Field>
+                <DialogFooter>
+                  <Button type="button" variant="ghost" onClick={() => setTemplateOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" size="sm" disabled={pending || !templateName.trim()}>
+                    Save
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -144,38 +180,31 @@ export function WorkoutEditor({
                             .join(", ")}`
                         : "No previous session"}
                     </p>
-                    <Button
+                    <ConfirmButton
                       size="icon"
                       variant="ghost"
                       disabled={pending}
                       aria-label={`Delete ${exercise.name}`}
-                      onClick={() =>
-                        run(() => deleteExerciseAction(exercise.id), { success: "Exercise removed" })
-                      }
+                      title={`Remove ${exercise.name}?`}
+                      description="Its sets go with it."
+                      confirmLabel="Remove"
+                      onConfirm={() => run(() => deleteExerciseAction(exercise.id), { success: "Exercise removed" })}
                     >
                       <Trash2 className="size-4" />
-                    </Button>
+                    </ConfirmButton>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[420px]">
-                    <thead>
-                      <tr className="text-left text-xs text-muted-foreground">
-                        <th className="pb-1 pr-3 font-medium">Set</th>
-                        <th className="pb-1 pr-3 font-medium">Reps</th>
-                        <th className="pb-1 pr-3 font-medium">Weight (kg)</th>
-                        <th className="pb-1 pr-3 font-medium">RPE</th>
-                        <th className="pb-1 pr-3 font-medium">Done</th>
-                        <th className="pb-1" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {exercise.sets.map((set, index) => (
-                        <SetRow key={set.id} set={set} index={index} />
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="grid grid-cols-[1.5rem_1fr_1fr_3rem_auto_auto] items-center gap-x-2 gap-y-1.5">
+                  <span className="text-xs text-muted-foreground">Set</span>
+                  <span className="text-xs text-muted-foreground">Reps</span>
+                  <span className="text-xs text-muted-foreground">kg</span>
+                  <span className="text-xs text-muted-foreground">RPE</span>
+                  <span className="text-xs text-muted-foreground">Done</span>
+                  <span />
+                  {exercise.sets.map((set, index) => (
+                    <SetRow key={set.id} set={set} index={index} />
+                  ))}
                 </div>
 
                 <Button

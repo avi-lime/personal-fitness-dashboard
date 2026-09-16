@@ -14,7 +14,7 @@ export function ProgressBar({
   /** 0..1 */
   value: number;
   label: string;
-  tone?: "neutral" | "positive" | "attention";
+  tone?: "neutral" | "positive";
   className?: string;
   size?: "default" | "lg";
 }) {
@@ -36,7 +36,6 @@ export function ProgressBar({
         className={cn(
           "h-full rounded-full transition-[width] duration-300",
           tone === "positive" && "bg-positive",
-          tone === "attention" && "bg-attention",
           tone === "neutral" && "bg-foreground/70",
         )}
         style={{ width: `${clamped * 100}%` }}

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { EmptyState } from "@/components/common/empty-state";
 import { useAction } from "@/components/common/use-action";
+import { ConfirmButton } from "@/components/common/confirm-button";
 import { GoalFormDialog } from "@/components/goals/goal-form-dialog";
 import { archiveGoalAction, reorderGoalsAction, updateGoalAction } from "@/server/actions/goals";
 import { metricLabel } from "@/lib/metrics";
@@ -41,7 +42,7 @@ export function GoalManager({ goals }: { goals: GoalLike[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-3xl">Goals</h1>
           <p className="text-sm text-muted-foreground">
@@ -55,9 +56,8 @@ export function GoalManager({ goals }: { goals: GoalLike[] }) {
 
       {goals.length === 0 ? (
         <EmptyState
-          title="No goals yet"
+          title="No goals yet."
           description="Add your first goal — for example 100 g of protein per day."
-          action={<Button size="sm" onClick={() => setCreating(true)}>Add goal</Button>}
         />
       ) : (
         <ul className="space-y-2">
@@ -114,23 +114,18 @@ export function GoalManager({ goals }: { goals: GoalLike[] }) {
                     >
                       <Pencil className="size-4" />
                     </Button>
-                    <Button
+                    <ConfirmButton
                       variant="ghost"
                       size="icon"
                       disabled={pending}
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Archive "${goal.name}"? Past entries are kept, but it disappears from the dashboard.`,
-                          )
-                        ) {
-                          run(() => archiveGoalAction(goal.id), { success: "Goal archived" });
-                        }
-                      }}
                       aria-label={`Archive ${goal.name}`}
+                      title={`Archive "${goal.name}"?`}
+                      description="Past entries are kept; it disappears from the dashboard and checklist."
+                      confirmLabel="Archive"
+                      onConfirm={() => run(() => archiveGoalAction(goal.id), { success: "Goal archived" })}
                     >
                       <Trash2 className="size-4" />
-                    </Button>
+                    </ConfirmButton>
                   </div>
                 </div>
 

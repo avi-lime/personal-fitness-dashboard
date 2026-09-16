@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ConfirmButton } from "@/components/common/confirm-button";
 import { Field } from "@/components/common/field";
 import { EmptyState } from "@/components/common/empty-state";
 import { AreaSelect } from "@/components/common/area-select";
@@ -112,15 +115,13 @@ export function DayPlan({
                       >
                         {block.startTime}–{block.endTime}
                       </span>
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={block.done}
                         disabled={pending}
-                        onChange={(event) =>
-                          run(() => setBlockDoneAction({ blockId: block.id, done: event.target.checked }))
+                        onCheckedChange={(checked) =>
+                          run(() => setBlockDoneAction({ blockId: block.id, done: checked === true }))
                         }
                         aria-label={`Mark "${block.label}" ${block.done ? "not done" : "done"}`}
-                        className="size-4 accent-foreground"
                       />
                       <span className={cn("min-w-0 flex-1 text-sm", block.done && "line-through text-muted-foreground")}>
                         {block.label}
@@ -180,7 +181,7 @@ function AddBlockForm({ date }: { date: LocalDate }) {
     <Card className="gap-3 p-4">
       <h2 className="text-sm font-medium">Add a block</h2>
       <form
-        className="flex flex-wrap items-end gap-3"
+        className="grid grid-cols-2 items-end gap-3 md:grid-cols-[7rem_7rem_minmax(0,1fr)_auto]"
         onSubmit={(event) => {
           event.preventDefault();
           run(() => addBlockAction({ date, startTime: start, endTime: end, label: label.trim() }), {
@@ -193,16 +194,16 @@ function AddBlockForm({ date }: { date: LocalDate }) {
           });
         }}
       >
-        <Field id="block-start" label="From" className="w-28">
+        <Field id="block-start" label="From">
           <Input id="block-start" type="time" value={start} onChange={(e) => setStart(e.target.value)} required />
         </Field>
-        <Field id="block-end" label="To" className="w-28">
+        <Field id="block-end" label="To">
           <Input id="block-end" type="time" value={end} onChange={(e) => setEnd(e.target.value)} required />
         </Field>
-        <Field id="block-label" label="What" className="min-w-40 flex-1">
+        <Field id="block-label" label="What" className="col-span-2 md:col-span-1">
           <Input id="block-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Deep work" required />
         </Field>
-        <Button type="submit" variant="secondary" disabled={pending || !start || !end || !label.trim()}>
+        <Button type="submit" size="sm" disabled={pending || !start || !end || !label.trim()}>
           <Plus className="size-4" aria-hidden /> Add
         </Button>
       </form>
@@ -217,9 +218,6 @@ function RoutinesPanel({ routines }: { routines: Routine[] }) {
   const [area, setArea] = useState<AreaKey | null>(null);
   const [days, setDays] = useState<Weekday[]>(["mon", "tue", "wed", "thu", "fri"]);
   const { pending, run } = useAction();
-
-  const toggleDay = (day: Weekday) =>
-    setDays((previous) => (previous.includes(day) ? previous.filter((d) => d !== day) : [...previous, day]));
 
   return (
     <div className="space-y-4">
@@ -249,19 +247,18 @@ function RoutinesPanel({ routines }: { routines: Routine[] }) {
                     {routine.area ? ` · ${AREA_LABELS[routine.area]}` : ""}
                   </p>
                 </div>
-                <Button
+                <ConfirmButton
                   variant="ghost"
                   size="icon"
                   disabled={pending}
                   aria-label={`Delete routine ${routine.label}`}
-                  onClick={() => {
-                    if (window.confirm(`Delete routine "${routine.label}"?`)) {
-                      run(() => deleteRoutineAction(routine.id), { success: "Routine deleted" });
-                    }
-                  }}
+                  title={`Delete routine "${routine.label}"?`}
+                  description="Blocks already planned from it stay."
+                  confirmLabel="Delete"
+                  onConfirm={() => run(() => deleteRoutineAction(routine.id), { success: "Routine deleted" })}
                 >
                   <Trash2 className="size-4" />
-                </Button>
+                </ConfirmButton>
               </li>
             ))}
           </ul>
@@ -309,23 +306,20 @@ function RoutinesPanel({ routines }: { routines: Routine[] }) {
               <AreaSelect id="routine-area" value={area} onChange={setArea} allowNone />
             </Field>
           </div>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Weekdays">
+          <ToggleGroup
+            type="multiple"
+            value={days}
+            onValueChange={(next) => setDays(next as Weekday[])}
+            aria-label="Weekdays"
+            className="flex-wrap justify-start"
+          >
             {WEEKDAYS.map((day) => (
-              <button
-                key={day}
-                type="button"
-                onClick={() => toggleDay(day)}
-                aria-pressed={days.includes(day)}
-                className={cn(
-                  "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
-                  days.includes(day) ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
+              <ToggleGroupItem key={day} value={day} size="sm" aria-label={WEEKDAY_LABELS[day]}>
                 {WEEKDAY_LABELS[day]}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
-          <Button type="submit" variant="secondary" disabled={pending || !label.trim() || !start || !end || days.length === 0}>
+          </ToggleGroup>
+          <Button type="submit" size="sm" disabled={pending || !label.trim() || !start || !end || days.length === 0}>
             Add routine
           </Button>
         </form>

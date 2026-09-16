@@ -17,6 +17,8 @@ const schema = z.object({
   /** Any OpenAI-compatible chat endpoint; defaults to Gemini's. */
   ASSISTANT_BASE_URL: z.string().url().optional(),
   ASSISTANT_MODEL: z.string().min(1).optional(),
+  /** Tried once when the primary model returns 429/503. Set to "" to disable. */
+  ASSISTANT_FALLBACK_MODEL: z.string().optional(),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 

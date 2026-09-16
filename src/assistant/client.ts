@@ -19,6 +19,8 @@ export interface ChatClient {
 export const DEFAULT_ASSISTANT_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/openai/";
 export const DEFAULT_ASSISTANT_MODEL = "gemini-3.6-flash";
+/** Used when the primary model is rate-limited or overloaded; separate free-tier quota. */
+export const DEFAULT_FALLBACK_MODEL = "gemini-3.1-flash-lite";
 
 export function isAssistantConfigured(): boolean {
   try {
@@ -32,6 +34,18 @@ export function assistantModel(): string {
   return getEnv().ASSISTANT_MODEL ?? DEFAULT_ASSISTANT_MODEL;
 }
 
+export function fallbackModel(): string | null {
+  const env = getEnv();
+  if (env.ASSISTANT_FALLBACK_MODEL === "") return null;
+  return env.ASSISTANT_FALLBACK_MODEL ?? DEFAULT_FALLBACK_MODEL;
+}
+
+function statusOf(error: unknown): number | null {
+  return typeof error === "object" && error !== null && "status" in error
+    ? (error as { status: unknown }).status as number
+    : null;
+}
+
 /** Created per request, never at module load, so builds need no key. */
 export function createAssistantClient(): ChatClient {
   const env = getEnv();
@@ -41,8 +55,20 @@ export function createAssistantClient(): ChatClient {
     maxRetries: 1,
     timeout: 45_000,
   });
+  const fallback = fallbackModel();
   return {
-    complete: (params) => client.chat.completions.create(params),
+    async complete(params) {
+      try {
+        return await client.chat.completions.create(params);
+      } catch (error) {
+        // Free tiers have small per-model quotas: on 429/503, try the lite model once.
+        const status = statusOf(error);
+        if (fallback && fallback !== params.model && (status === 429 || status === 503)) {
+          return client.chat.completions.create({ ...params, model: fallback });
+        }
+        throw error;
+      }
+    },
   };
 }
 
@@ -59,6 +85,9 @@ export function describeAssistantError(error: unknown): string {
     return `The model "${assistantModel()}" was not found at this provider. Check ASSISTANT_MODEL.`;
   }
   if (status === 429) return "The assistant is rate-limited right now — try again in a minute.";
+  if (status === 503 || status === 502 || status === 504) {
+    return "The model is busy right now (provider says high demand) — try again in a moment.";
+  }
   return error instanceof Error && error.message ? error.message : "The assistant did not respond.";
 }
 

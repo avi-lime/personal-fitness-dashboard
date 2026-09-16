@@ -104,7 +104,7 @@ export function TimePanel({
           </div>
         ) : (
           <form
-            className="flex flex-wrap items-end gap-3"
+            className="grid grid-cols-2 items-end gap-3 md:grid-cols-[11rem_minmax(0,1fr)_auto]"
             onSubmit={(event) => {
               event.preventDefault();
               if (!category) return;
@@ -114,10 +114,10 @@ export function TimePanel({
               });
             }}
           >
-            <Field id="timer-category" label="Category" className="w-40">
+            <Field id="timer-category" label="Category">
               <AreaSelect id="timer-category" value={category} onChange={setCategory} />
             </Field>
-            <Field id="timer-label" label="What" className="min-w-48 flex-1">
+            <Field id="timer-label" label="What" className="col-span-2 md:col-span-1">
               <Input
                 id="timer-label"
                 value={label}
@@ -125,7 +125,7 @@ export function TimePanel({
                 placeholder="optional, e.g. system design prep"
               />
             </Field>
-            <Button type="submit" disabled={pending || !category}>
+            <Button type="submit" size="sm" disabled={pending || !category}>
               <Play className="size-4" aria-hidden /> Start
             </Button>
           </form>
@@ -174,7 +174,7 @@ export function TimePanel({
           <Card className="gap-3 p-4">
             <h2 className="text-sm font-medium">Log a finished session</h2>
             <form
-              className="flex flex-wrap items-end gap-3"
+              className="grid grid-cols-2 items-end gap-3 md:grid-cols-[11rem_7rem_auto]"
               onSubmit={(event) => {
                 event.preventDefault();
                 const minutes = Number.parseInt(logMinutes, 10);
@@ -185,10 +185,10 @@ export function TimePanel({
                 });
               }}
             >
-              <Field id="log-category" label="Category" className="w-40">
+              <Field id="log-category" label="Category">
                 <AreaSelect id="log-category" value={logCategory} onChange={setLogCategory} />
               </Field>
-              <Field id="log-minutes" label="Minutes" className="w-28">
+              <Field id="log-minutes" label="Minutes">
                 <Input
                   id="log-minutes"
                   inputMode="numeric"
@@ -197,7 +197,7 @@ export function TimePanel({
                   placeholder="45"
                 />
               </Field>
-              <Button type="submit" variant="secondary" disabled={pending || !logMinutes}>
+              <Button type="submit" size="sm" disabled={pending || !logMinutes}>
                 Log
               </Button>
             </form>

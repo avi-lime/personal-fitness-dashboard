@@ -44,7 +44,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
-          <Toaster position="bottom-right" />
+          <Toaster
+            position="bottom-right"
+            mobileOffset={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)", right: 16, left: 16 }}
+          />
         </ThemeProvider>
       </body>
     </html>

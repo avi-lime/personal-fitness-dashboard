@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAction } from "@/components/common/use-action";
 import { setTaskDoneAction } from "@/server/actions/tasks";
 import { formatShortDate, type LocalDate } from "@/lib/date";
@@ -32,12 +33,10 @@ export function TasksCard({ tasks, today, overdue }: { tasks: Task[]; today: Loc
             const late = task.dueDate !== null && task.dueDate < today;
             return (
               <li key={task.id} className="flex items-center gap-3 py-1.5">
-                <input
-                  type="checkbox"
+                <Checkbox
                   disabled={pending}
-                  onChange={() => run(() => setTaskDoneAction({ taskId: task.id, done: true }), { success: "Task completed" })}
+                  onCheckedChange={() => run(() => setTaskDoneAction({ taskId: task.id, done: true }), { success: "Task completed" })}
                   aria-label={`Mark "${task.title}" done`}
-                  className="size-4 accent-foreground"
                 />
                 <span className="min-w-0 flex-1 truncate text-sm">{task.title}</span>
                 {task.dueDate ? (

@@ -29,17 +29,18 @@ export function AssistantFab({ className }: { className?: string }) {
   const { open } = useLogDialogs();
   const { supported } = useSpeechRecognition(() => {});
   return (
-    <button
+    <Button
       type="button"
+      size="icon-lg"
       onClick={() => open("quick", { listen: supported })}
       aria-label={supported ? "Dictate a command" : "Quick entry"}
       className={cn(
-        "fixed right-4 z-40 flex size-14 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-lg outline-none transition-transform active:scale-95 focus-visible:ring-3 focus-visible:ring-brand/40 md:hidden",
+        "fixed right-4 z-40 size-12 rounded-full bg-brand text-brand-foreground shadow-lg hover:bg-brand/90 md:hidden",
         className,
       )}
-      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }}
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4.5rem)" }}
     >
-      <Mic className="size-6" aria-hidden />
-    </button>
+      <Mic className="size-5" aria-hidden />
+    </Button>
   );
 }

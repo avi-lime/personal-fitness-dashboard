@@ -1,12 +1,8 @@
-import Link from "next/link";
-import { LogOut, MonitorPlay, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Clock } from "@/components/layout/clock";
 import { NavLinks } from "@/components/layout/nav-links";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { HeaderMenu } from "@/components/layout/header-menu";
 import { QuickEntryButton } from "@/components/layout/quick-entry-button";
 import { AssistantMicButton } from "@/components/assistant/mic-button";
-import { logoutAction } from "@/server/actions/auth";
 import { formatLongDate, toLocalTime, type LocalDate } from "@/lib/date";
 
 export function AppHeader({ date, timezone }: { date: LocalDate; timezone: string }) {
@@ -23,8 +19,6 @@ export function AppHeader({ date, timezone }: { date: LocalDate; timezone: strin
               initialTime={toLocalTime(new Date(), timezone)}
               className="tabular"
             />
-            <span className="mx-1.5">·</span>
-            {timezone}
           </p>
         </div>
 
@@ -35,22 +29,7 @@ export function AppHeader({ date, timezone }: { date: LocalDate; timezone: strin
         <div className="ml-auto flex items-center gap-1.5">
           <QuickEntryButton />
           <AssistantMicButton />
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/monitor" title="Monitor mode" aria-label="Open monitor mode">
-              <MonitorPlay className="size-4" />
-            </Link>
-          </Button>
-          <ThemeToggle />
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/settings" title="Settings" aria-label="Settings">
-              <Settings className="size-4" />
-            </Link>
-          </Button>
-          <form action={logoutAction}>
-            <Button variant="ghost" size="icon" type="submit" title="Sign out" aria-label="Sign out">
-              <LogOut className="size-4" />
-            </Button>
-          </form>
+          <HeaderMenu />
         </div>
       </div>
     </header>

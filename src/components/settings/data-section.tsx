@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/common/field";
 import { useAction } from "@/components/common/use-action";
+import { ConfirmButton } from "@/components/common/confirm-button";
 import { deleteAllDataAction, importDataAction } from "@/server/actions/settings";
 
 /** Export, import and irreversible deletion. Deletion needs typed confirmation. */
@@ -83,21 +84,22 @@ export function DataSection() {
             autoComplete="off"
           />
         </Field>
-        <Button
+        <ConfirmButton
           variant="destructive"
           size="sm"
           disabled={pending || confirmation !== "DELETE"}
-          onClick={() => {
-            if (window.confirm("Permanently delete all of your data?")) {
-              run(() => deleteAllDataAction(confirmation), {
-                success: "All data deleted",
-                onSuccess: () => setConfirmation(""),
-              });
-            }
-          }}
+          title="Permanently delete all of your data?"
+          description="Every goal, log, task, application, transaction and note is removed. There is no undo."
+          confirmLabel="Delete everything"
+          onConfirm={() =>
+            run(() => deleteAllDataAction(confirmation), {
+              success: "All data deleted",
+              onSuccess: () => setConfirmation(""),
+            })
+          }
         >
           <Trash2 className="size-4" aria-hidden /> Delete everything
-        </Button>
+        </ConfirmButton>
       </div>
     </Card>
   );

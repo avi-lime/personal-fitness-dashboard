@@ -38,15 +38,7 @@ export function WorkoutList({
           </Button>
         </div>
         {workouts.length === 0 ? (
-          <EmptyState
-            title="No workouts yet"
-            description="Start one from scratch or from a template."
-            action={
-              <Button size="sm" onClick={() => open("workout")}>
-                Start workout
-              </Button>
-            }
-          />
+          <EmptyState title="No workouts yet." description="Start one from scratch or from a template." />
         ) : (
           <ul className="space-y-2">
             {workouts.map((workout) => {
@@ -72,7 +64,7 @@ export function WorkoutList({
                     <div className="min-w-40 flex-1">
                       <p className="flex items-center gap-2 text-sm font-medium">
                         {workout.name}
-                        <Badge variant={workout.completedAt ? "default" : "secondary"}>
+                        <Badge variant={workout.completedAt ? "secondary" : "outline"}>
                           {workout.completedAt ? "Completed" : "In progress"}
                         </Badge>
                       </p>

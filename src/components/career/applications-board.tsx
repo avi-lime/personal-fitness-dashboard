@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Stat } from "@/components/common/stat";
 import { EmptyState } from "@/components/common/empty-state";
 import { useAction } from "@/components/common/use-action";
+import { ConfirmButton } from "@/components/common/confirm-button";
 import {
   Select,
   SelectContent,
@@ -42,7 +43,7 @@ export function ApplicationsBoard({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-3xl">Career</h1>
           <p className="text-sm text-muted-foreground">
@@ -71,9 +72,8 @@ export function ApplicationsBoard({
 
       {applications.length === 0 ? (
         <EmptyState
-          title="No applications yet"
+          title="No applications yet."
           description='Add one here, or say "add an application at Acme for senior engineer".'
-          action={<Button size="sm" onClick={() => setCreating(true)}>Add application</Button>}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -105,19 +105,18 @@ export function ApplicationsBoard({
                           <Button variant="ghost" size="icon" aria-label={`Edit ${app.company}`} onClick={() => setEditing(app)}>
                             <Pencil className="size-4" />
                           </Button>
-                          <Button
+                          <ConfirmButton
                             variant="ghost"
                             size="icon"
                             disabled={pending}
                             aria-label={`Archive ${app.company}`}
-                            onClick={() => {
-                              if (window.confirm(`Archive ${app.role} at ${app.company}?`)) {
-                                run(() => archiveApplicationAction(app.id), { success: "Archived" });
-                              }
-                            }}
+                            title={`Archive ${app.role} at ${app.company}?`}
+                            description="It leaves the board but is kept for history."
+                            confirmLabel="Archive"
+                            onConfirm={() => run(() => archiveApplicationAction(app.id), { success: "Archived" })}
                           >
                             <Archive className="size-4" />
-                          </Button>
+                          </ConfirmButton>
                         </div>
                       </div>
                       {app.nextStep ? (

@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils";
 
-/** Trend glyph: no axes, no labels, just the shape of the last N values. */
+/** Trend glyph: the shape of the last N values over a faint baseline, drawn at true proportions. */
 export function Sparkline({
   values,
   className,
   ariaLabel,
-  width = 120,
-  height = 32,
+  width = 160,
+  height = 36,
 }: {
   values: number[];
   className?: string;
@@ -20,31 +20,22 @@ export function Sparkline({
   const max = Math.max(...values);
   const range = max - min || 1;
   const step = width / (values.length - 1);
+  const yOf = (value: number) => height - 3 - ((value - min) / range) * (height - 6);
   const path = values
-    .map((value, index) => {
-      const x = index * step;
-      const y = height - 2 - ((value - min) / range) * (height - 4);
-      return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
-    })
+    .map((value, index) => `${index === 0 ? "M" : "L"}${(index * step).toFixed(2)},${yOf(value).toFixed(2)}`)
     .join(" ");
 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className={cn("h-8 w-full", className)}
+      preserveAspectRatio="xMinYMid meet"
+      className={cn("h-9 w-full", className)}
       role="img"
       aria-label={ariaLabel}
-      preserveAspectRatio="none"
     >
-      <path
-        d={path}
-        fill="none"
-        className="stroke-foreground/70"
-        strokeWidth={1.5}
-        vectorEffect="non-scaling-stroke"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <line x1={0} x2={width} y1={height - 3} y2={height - 3} className="stroke-border" strokeWidth={1} />
+      <path d={path} fill="none" className="stroke-foreground/70" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={(values.length - 1) * step} cy={yOf(values[values.length - 1])} r={2} className="fill-foreground" />
     </svg>
   );
 }

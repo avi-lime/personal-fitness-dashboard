@@ -5,7 +5,15 @@ import { APPLICATION_STAGE_LABELS } from "@/lib/domain";
 import { formatShortDate } from "@/lib/date";
 import type { Application } from "@/db/schema";
 
-export function CareerCard({ active, nextStepsDue }: { active: Application[]; nextStepsDue: Application[] }) {
+export function CareerCard({
+  active,
+  nextStepsDue,
+  today,
+}: {
+  active: Application[];
+  nextStepsDue: Application[];
+  today: string;
+}) {
   const interviewing = active.filter((app) => app.stage === "interview" || app.stage === "offer");
   return (
     <Card className="gap-3 p-4">
@@ -33,7 +41,9 @@ export function CareerCard({ active, nextStepsDue }: { active: Application[]; ne
               {nextStepsDue.slice(0, 3).map((app) => (
                 <li key={app.id} className="flex items-center justify-between gap-2">
                   <span className="truncate">
-                    <span className="text-brand">{app.nextStep ?? "Next step"}</span>
+                    <span className={app.nextStepDate !== null && app.nextStepDate <= today ? "text-brand" : undefined}>
+                      {app.nextStep ?? "Next step"}
+                    </span>
                     <span className="text-muted-foreground"> · {app.company}</span>
                   </span>
                   <span className="tabular text-xs text-muted-foreground">

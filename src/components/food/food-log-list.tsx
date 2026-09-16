@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/common/empty-state";
 import { useAction } from "@/components/common/use-action";
 import { FoodDialog, toDialogEntry, type FoodDialogEntry } from "@/components/log/food-dialog";
@@ -56,9 +57,8 @@ export function FoodLogList({
 
       {entries.length === 0 ? (
         <EmptyState
-          title="Nothing logged today"
+          title="Nothing logged today."
           description="Log a meal, or apply one of your saved meal templates."
-          action={<Button size="sm" onClick={() => setCreating(true)}>Log food</Button>}
         />
       ) : (
         <div className="space-y-4">
@@ -74,12 +74,10 @@ export function FoodLogList({
                         key={entry.id}
                         className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5"
                       >
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={selected.includes(entry.id)}
-                          onChange={() => toggle(entry.id)}
+                          onCheckedChange={() => toggle(entry.id)}
                           aria-label={`Select ${entry.name} for a meal template`}
-                          className="size-4 accent-foreground"
                         />
                         <div className="min-w-40 flex-1">
                           <p className="flex items-center gap-2 text-sm font-medium">

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Maximize2, Minimize2, X } from "lucide-react";
 import { Sparkline } from "@/components/charts/sparkline";
+import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/charts/progress-bar";
 import { toLocalTime } from "@/lib/date";
 import { formatDuration, formatMoney, formatSigned, formatValue } from "@/lib/format";
@@ -73,25 +74,21 @@ export function MonitorView({ initial }: { initial: MonitorPayload }) {
 
           <div className="flex items-center gap-2">
             {stale ? (
-              <span className="rounded-full border border-attention/40 px-3 py-1 text-xs text-attention">
-                Reconnecting…
-              </span>
+              <span className="rounded-full border px-3 py-1 text-xs text-muted-foreground">Reconnecting…</span>
             ) : null}
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="icon"
               onClick={toggleFullscreen}
               aria-label={fullscreen ? "Exit full screen" : "Enter full screen"}
-              className="rounded-md border p-2 text-muted-foreground transition-colors hover:text-foreground"
             >
               {fullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
-            </button>
-            <Link
-              href="/"
-              aria-label="Back to dashboard"
-              className="rounded-md border p-2 text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <X className="size-4" />
-            </Link>
+            </Button>
+            <Button variant="outline" size="icon" asChild>
+              <Link href="/" aria-label="Back to dashboard">
+                <X className="size-4" />
+              </Link>
+            </Button>
           </div>
         </header>
 
