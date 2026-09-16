@@ -2,12 +2,14 @@ import type { LucideIcon } from "lucide-react";
 import {
   Apple,
   BarChart3,
+  CalendarCheck,
+  CheckSquare,
   Dumbbell,
   Ellipsis,
   Home,
   Scale,
   Target,
-  CalendarCheck,
+  Timer,
 } from "lucide-react";
 
 export interface NavItem {
@@ -21,9 +23,11 @@ export interface NavItem {
 /** One list drives the desktop header nav and the phone tab bar. */
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/", label: "Today", icon: Home, mobile: true },
+  { href: "/tasks", label: "Tasks", icon: CheckSquare, mobile: true },
+  { href: "/time", label: "Time", icon: Timer, mobile: true },
   { href: "/food", label: "Food", icon: Apple, mobile: true },
-  { href: "/training", label: "Training", icon: Dumbbell, mobile: true },
-  { href: "/body", label: "Body", icon: Scale, mobile: true },
+  { href: "/training", label: "Training", icon: Dumbbell },
+  { href: "/body", label: "Body", icon: Scale },
   { href: "/history", label: "History", icon: BarChart3 },
   { href: "/review", label: "Review", icon: CalendarCheck },
   { href: "/goals", label: "Goals", icon: Target },

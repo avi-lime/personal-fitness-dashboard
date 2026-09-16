@@ -1,5 +1,5 @@
 /** Sent to clients during initialization; shapes how a model should use this server. */
-export const SERVER_INSTRUCTIONS = `This server controls one person's private life/fitness dashboard (goals, food, water, weight, sleep, workouts and notes).
+export const SERVER_INSTRUCTIONS = `This server controls one person's private life dashboard: goals, food, water, weight, sleep, workouts, notes, tasks and time tracking (study, freelance, work, career…).
 
 Read tools (get_*) are safe to call whenever you need context; they never change anything.
 
@@ -10,4 +10,6 @@ Rules of thumb:
 - Dates are calendar days in the user's own timezone, formatted YYYY-MM-DD. Timestamps are ISO-8601. Omit an optional date or timestamp to mean "now"/"today".
 - Goals are fully user-defined. Never assume a goal exists: call get_goals first. A goal tracked from a metric (for example protein) updates automatically from logged entries — do not use complete_goal for those; log the underlying entry instead.
 - remove_goal archives a goal and hides it from the dashboard; historical entries are kept. It is not reversible from this server, so confirm with the user first.
+- Tasks are things still to do; use complete_task when one is finished and log_time / start_timer for time spent. "I studied for an hour" is log_time, not a task.
+- Life areas are a fixed list: fitness, nutrition, work, freelance, career, study, money, personal.
 - Ask for clarification rather than guessing when a mutation is ambiguous.`;

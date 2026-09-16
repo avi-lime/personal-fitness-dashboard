@@ -1,13 +1,17 @@
 import { z } from "zod";
 import {
+  AREA_KEYS,
   GOAL_PERIODS,
   GOAL_TYPES,
   MEAL_TYPES,
   METRIC_KEYS,
+  TASK_PRIORITIES,
+  TASK_STATUSES,
   THEMES,
   UNIT_SYSTEMS,
 } from "./domain";
 import { isLocalDate, isValidTimeZone } from "./date";
+import { METRICS } from "./metrics";
 
 /**
  * One set of schemas shared by the web server actions and the MCP tools, so
@@ -51,12 +55,51 @@ export const goalTypeSchema = z.enum(GOAL_TYPES);
 export const goalPeriodSchema = z.enum(GOAL_PERIODS);
 export const mealTypeSchema = z.enum(MEAL_TYPES);
 export const metricKeySchema = z.enum(METRIC_KEYS);
+export const areaKeySchema = z.enum(AREA_KEYS);
+export const taskPrioritySchema = z.enum(TASK_PRIORITIES);
+export const taskStatusSchema = z.enum(TASK_STATUSES);
+
+/**
+ * A goal's metric parameter must match what its metric declares: required
+ * (and a known area) for parameterised metrics, absent for the rest. Shared by
+ * the web form and the MCP/assistant tools.
+ */
+export function validateMetricParam(
+  value: { metricKey?: string | null; metricParam?: string | null },
+  ctx: { addIssue: (issue: { code: "custom"; message: string; path: string[] }) => void },
+): void {
+  const key = value.metricKey ?? null;
+  const param = value.metricParam ?? null;
+  if (key === null) {
+    if (param !== null) {
+      ctx.addIssue({ code: "custom", message: "metricParam requires a metricKey", path: ["metricParam"] });
+    }
+    return;
+  }
+  const metric = METRICS[key as keyof typeof METRICS];
+  if (!metric) return;
+  if (metric.param) {
+    if (param === null || !(AREA_KEYS as readonly string[]).includes(param)) {
+      ctx.addIssue({
+        code: "custom",
+        message: `${metric.label} needs metricParam set to one of: ${AREA_KEYS.join(", ")}`,
+        path: ["metricParam"],
+      });
+    }
+  } else if (param !== null) {
+    ctx.addIssue({
+      code: "custom",
+      message: `${metric.label} does not take a metricParam`,
+      path: ["metricParam"],
+    });
+  }
+}
 export const themeSchema = z.enum(THEMES);
 export const unitSystemSchema = z.enum(UNIT_SYSTEMS);
 
 export const uuidSchema = z.string().uuid("Expected a UUID");
 
-export const goalInputSchema = z.object({
+const goalBaseSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(80),
   description: z.string().trim().max(500).nullish(),
   type: goalTypeSchema,
@@ -64,17 +107,61 @@ export const goalInputSchema = z.object({
   targetValue: bounded(1_000_000, "Target").nullish(),
   period: goalPeriodSchema,
   metricKey: metricKeySchema.nullish(),
+  metricParam: z.string().trim().max(40).nullish(),
+  area: areaKeySchema.nullish(),
   visibleOnDashboard: z.boolean().default(true),
   showInChecklist: z.boolean().default(true),
   color: z.string().trim().max(32).nullish(),
   icon: z.string().trim().max(32).nullish(),
 });
+
+export const goalInputSchema = goalBaseSchema.superRefine(validateMetricParam);
 export type GoalInput = z.infer<typeof goalInputSchema>;
 
-export const goalUpdateSchema = goalInputSchema
+/**
+ * A partial update can only be checked when both metric fields are present;
+ * the service re-checks the merged result before writing.
+ */
+export const goalUpdateSchema = goalBaseSchema
   .partial()
-  .extend({ active: z.boolean().optional(), sortOrder: z.number().int().min(0).optional() });
+  .extend({ active: z.boolean().optional(), sortOrder: z.number().int().min(0).optional() })
+  .superRefine((value, ctx) => {
+    if (value.metricKey !== undefined && value.metricParam !== undefined) {
+      validateMetricParam(value, ctx);
+    }
+  });
 export type GoalUpdate = z.infer<typeof goalUpdateSchema>;
+
+// --- Tasks & time ----------------------------------------------------------
+
+export const taskInputSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(160),
+  area: areaKeySchema.nullish(),
+  dueDate: localDateSchema.nullish(),
+  priority: taskPrioritySchema.default("medium"),
+  notes: z.string().trim().max(1000).nullish(),
+});
+export type TaskInput = z.infer<typeof taskInputSchema>;
+
+export const taskUpdateSchema = taskInputSchema.partial().extend({
+  status: taskStatusSchema.optional(),
+});
+export type TaskUpdate = z.infer<typeof taskUpdateSchema>;
+
+export const minutesSchema = z
+  .number()
+  .int("Minutes must be a whole number")
+  .min(1, "Minutes must be at least 1")
+  .max(24 * 60, "A session cannot exceed 24 hours");
+
+export const timeEntryInputSchema = z.object({
+  category: areaKeySchema,
+  minutes: minutesSchema,
+  label: z.string().trim().max(120).nullish(),
+  date: localDateSchema.nullish(),
+  notes: z.string().trim().max(500).nullish(),
+});
+export type TimeEntryInput = z.infer<typeof timeEntryInputSchema>;
 
 export const foodLogInputSchema = z.object({
   name: z.string().trim().min(1, "Food name is required").max(120),

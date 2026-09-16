@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { useAction } from "@/components/common/use-action";
 import { GoalFormDialog } from "@/components/goals/goal-form-dialog";
 import { archiveGoalAction, reorderGoalsAction, updateGoalAction } from "@/server/actions/goals";
-import { METRICS } from "@/lib/metrics";
+import { metricLabel } from "@/lib/metrics";
 import { formatValue } from "@/lib/format";
 import type { GoalLike } from "@/lib/goals";
 
@@ -80,7 +80,7 @@ export function GoalManager({ goals }: { goals: GoalLike[] }) {
                             PERIOD_LABEL[goal.period]
                           }`}
                       <span className="mx-1.5">·</span>
-                      {goal.metricKey ? METRICS[goal.metricKey].label : "Manual entries"}
+                      {metricLabel(goal.metricKey, goal.metricParam)}
                     </p>
                     {goal.description ? (
                       <p className="text-sm text-muted-foreground">{goal.description}</p>

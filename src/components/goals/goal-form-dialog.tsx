@@ -24,8 +24,16 @@ import {
 import { Field } from "@/components/common/field";
 import { useAction } from "@/components/common/use-action";
 import { createGoalAction, updateGoalAction } from "@/server/actions/goals";
-import { GOAL_PERIODS, GOAL_TYPES, type GoalPeriod, type GoalType, type MetricKey } from "@/lib/domain";
-import { METRIC_LIST } from "@/lib/metrics";
+import {
+  GOAL_PERIODS,
+  GOAL_TYPES,
+  type AreaKey,
+  type GoalPeriod,
+  type GoalType,
+  type MetricKey,
+} from "@/lib/domain";
+import { METRICS, METRIC_LIST } from "@/lib/metrics";
+import { AreaSelect } from "@/components/common/area-select";
 import type { GoalLike } from "@/lib/goals";
 
 const MANUAL = "manual";
@@ -52,6 +60,8 @@ interface FormState {
   unit: string;
   targetValue: string;
   metricKey: string;
+  metricParam: AreaKey | null;
+  area: AreaKey | null;
   visibleOnDashboard: boolean;
   showInChecklist: boolean;
 }
@@ -64,6 +74,8 @@ const BLANK: FormState = {
   unit: "",
   targetValue: "",
   metricKey: MANUAL,
+  metricParam: null,
+  area: null,
   visibleOnDashboard: true,
   showInChecklist: true,
 };
@@ -108,6 +120,8 @@ function initialState(goal?: GoalLike | null): FormState {
     unit: goal.unit ?? "",
     targetValue: goal.targetValue === null ? "" : String(goal.targetValue),
     metricKey: goal.metricKey ?? MANUAL,
+    metricParam: (goal.metricParam as AreaKey | null) ?? null,
+    area: goal.area,
     visibleOnDashboard: goal.visibleOnDashboard,
     showInChecklist: goal.showInChecklist,
   };
@@ -122,17 +136,19 @@ function GoalForm({ goal, onDone }: { goal?: GoalLike | null; onDone: () => void
 
   const chooseMetric = (value: string) => {
     if (value === MANUAL) {
-      set("metricKey", MANUAL);
+      setForm((previous) => ({ ...previous, metricKey: MANUAL, metricParam: null }));
       return;
     }
     const metric = METRIC_LIST.find((item) => item.key === value);
     setForm((previous) => ({
       ...previous,
       metricKey: value,
+      metricParam: metric?.param ? (previous.metricParam ?? "study") : null,
       unit: previous.unit || (metric?.defaultUnit ?? ""),
       type: metric?.suggestedType ?? previous.type,
     }));
   };
+  const paramNeeded = form.metricKey !== MANUAL && Boolean(METRICS[form.metricKey as MetricKey]?.param);
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -145,6 +161,8 @@ function GoalForm({ goal, onDone }: { goal?: GoalLike | null; onDone: () => void
       unit: form.unit.trim() === "" ? null : form.unit.trim(),
       targetValue: target === "" ? null : Number(target.replace(",", ".")),
       metricKey: form.metricKey === MANUAL ? null : (form.metricKey as MetricKey),
+      metricParam: paramNeeded ? form.metricParam : null,
+      area: form.area,
       visibleOnDashboard: form.visibleOnDashboard,
       showInChecklist: form.showInChecklist,
     };
@@ -191,7 +209,20 @@ function GoalForm({ goal, onDone }: { goal?: GoalLike | null; onDone: () => void
             </Select>
           </Field>
 
+          {paramNeeded ? (
+            <Field id="goal-param" label="Category" hint="Which tracked time counts towards this goal.">
+              <AreaSelect
+                id="goal-param"
+                value={form.metricParam}
+                onChange={(value) => set("metricParam", value)}
+              />
+            </Field>
+          ) : null}
+
           <div className="grid gap-3 sm:grid-cols-2">
+            <Field id="goal-area" label="Area" hint="Groups the goal with the rest of that part of life.">
+              <AreaSelect id="goal-area" value={form.area} onChange={(value) => set("area", value)} allowNone />
+            </Field>
             <Field id="goal-type" label="Type" hint={TYPE_HINT[form.type]}>
               <Select value={form.type} onValueChange={(value) => set("type", value as GoalType)}>
                 <SelectTrigger id="goal-type" className="w-full">

@@ -12,6 +12,8 @@ const base: GoalLike = {
   targetValue: 100,
   period: "daily",
   metricKey: "protein",
+  metricParam: null,
+  area: null,
   active: true,
   visibleOnDashboard: true,
   showInChecklist: true,

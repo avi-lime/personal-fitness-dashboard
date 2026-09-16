@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { McpContext } from "./context";
 import { fitnessTools } from "./tools/fitness";
+import { taskTools } from "./tools/tasks";
+import { timeTools } from "./tools/time";
 
 /**
  * The single source of truth for every tool the app exposes.
@@ -36,7 +38,7 @@ export function defineTool<S extends z.ZodObject>(tool: ToolDefinition<S>): AnyT
   return tool as AnyTool;
 }
 
-export const TOOLS: readonly AnyTool[] = [...fitnessTools];
+export const TOOLS: readonly AnyTool[] = [...fitnessTools, ...taskTools, ...timeTools];
 
 export const toolByName: ReadonlyMap<string, AnyTool> = new Map(
   TOOLS.map((tool) => [tool.name, tool]),

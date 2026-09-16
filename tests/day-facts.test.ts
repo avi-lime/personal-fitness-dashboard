@@ -101,3 +101,40 @@ suite("daily aggregation", () => {
     expect(dense.get("2026-09-03")?.weightKg).toBeNull();
   });
 });
+
+suite("time and task buckets", () => {
+  const timezone = "UTC";
+  let userId: string;
+
+  beforeAll(async () => {
+    const username = `vitest-buckets-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const [user] = await db.insert(users).values({ username }).returning();
+    userId = user.id;
+    await db.insert(profiles).values({ userId, timezone });
+  });
+
+  afterAll(async () => {
+    if (userId) await db.delete(users).where(eq(users.id, userId));
+  });
+
+  it("sums finished sessions by category and counts completed tasks on their day", async () => {
+    const { logTimeEntry, startTimer } = await import("@/server/services/time");
+    const { completeTask, createTask } = await import("@/server/services/tasks");
+
+    await logTimeEntry(userId, timezone, { category: "study", minutes: 30, date: "2026-09-10" });
+    await logTimeEntry(userId, timezone, { category: "study", minutes: 15, date: "2026-09-10" });
+    await logTimeEntry(userId, timezone, { category: "freelance", minutes: 120, date: "2026-09-10" });
+    // A running timer must not count until it stops.
+    await startTimer(userId, timezone, "work");
+
+    const task = await createTask(userId, { title: "Ship it", priority: "high" });
+    await completeTask(userId, task.id, "2026-09-10");
+    const open = await createTask(userId, { title: "Not yet", priority: "low" });
+    expect(open.status).toBe("todo");
+
+    const facts = await loadDayFacts(userId, "2026-09-10", "2026-09-10");
+    const day = facts.get("2026-09-10");
+    expect(day?.minutesByCategory).toEqual({ study: 45, freelance: 120 });
+    expect(day?.tasksCompleted).toBe(1);
+  });
+});

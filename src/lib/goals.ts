@@ -1,4 +1,4 @@
-import type { GoalPeriod, GoalStatus, GoalType, MetricKey } from "./domain";
+import type { AreaKey, GoalPeriod, GoalStatus, GoalType, MetricKey } from "./domain";
 import {
   addDays,
   endOfMonth,
@@ -19,6 +19,9 @@ export interface GoalLike {
   targetValue: number | null;
   period: GoalPeriod;
   metricKey: MetricKey | null;
+  /** Parameter for metrics that need one (e.g. the category for time tracked). */
+  metricParam: string | null;
+  area: AreaKey | null;
   active: boolean;
   visibleOnDashboard: boolean;
   showInChecklist: boolean;
@@ -91,7 +94,7 @@ export function round(value: number, decimals = 2): number {
  * `days` must already be filtered to the goal's period window.
  */
 export function computeGoalProgress(goal: GoalLike, days: DayFacts[]): GoalProgress {
-  const raw = resolveMetric(goal.metricKey, goal.id, days);
+  const raw = resolveMetric(goal.metricKey, goal.id, days, goal.metricParam);
   const current = round(raw ?? 0);
   const target = effectiveTarget(goal);
   const trackingOnly = target === null;

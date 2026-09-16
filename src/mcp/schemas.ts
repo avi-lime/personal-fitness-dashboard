@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { validateMetricParam } from "@/lib/validation";
 import {
+  areaKeySchema,
   caloriesSchema,
   dateRangeSchema,
   goalPeriodSchema,
@@ -13,6 +15,9 @@ import {
   millilitersSchema,
   qualitySchema,
   quantitySchema,
+  minutesSchema,
+  taskPrioritySchema,
+  taskStatusSchema,
   uuidSchema,
 } from "@/lib/validation";
 
@@ -93,27 +98,33 @@ export const logWorkoutInput = z.object({
     .optional(),
 });
 
-export const addGoalInput = z.object({
-  name: z.string().trim().min(1).max(80),
-  description: z.string().trim().max(500).optional(),
-  type: goalTypeSchema.describe("numeric | duration | boolean | count."),
-  unit: z.string().trim().max(20).describe('Display unit, e.g. "g" or "L".').optional(),
-  targetValue: z
-    .number()
-    .finite()
-    .min(0)
-    .max(1_000_000)
-    .describe("Target for the period. Omit to track without a target.")
-    .optional(),
-  period: goalPeriodSchema.describe("daily | weekly | monthly | one_time."),
-  metricKey: metricKeySchema
-    .describe(
-      "Derive progress automatically from logged entries. Omit for a goal recorded by hand with complete_goal.",
-    )
-    .optional(),
-  visibleOnDashboard: z.boolean().optional(),
-  showInChecklist: z.boolean().optional(),
-});
+export const addGoalInput = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    description: z.string().trim().max(500).optional(),
+    type: goalTypeSchema.describe("numeric | duration | boolean | count."),
+    unit: z.string().trim().max(20).describe('Display unit, e.g. "g" or "L".').optional(),
+    targetValue: z
+      .number()
+      .finite()
+      .min(0)
+      .max(1_000_000)
+      .describe("Target for the period. Omit to track without a target.")
+      .optional(),
+    period: goalPeriodSchema.describe("daily | weekly | monthly | one_time."),
+    metricKey: metricKeySchema
+      .describe(
+        "Derive progress automatically from logged entries. Omit for a goal recorded by hand with complete_goal. time_minutes needs metricParam.",
+      )
+      .optional(),
+    metricParam: areaKeySchema
+      .describe("For metricKey time_minutes: which category of tracked time counts.")
+      .optional(),
+    area: areaKeySchema.describe("Life area this goal belongs to.").optional(),
+    visibleOnDashboard: z.boolean().optional(),
+    showInChecklist: z.boolean().optional(),
+  })
+  .superRefine(validateMetricParam);
 
 export const updateGoalInput = z.object({
   goalId: uuidSchema,
@@ -124,6 +135,8 @@ export const updateGoalInput = z.object({
   targetValue: z.number().finite().min(0).max(1_000_000).nullable().optional(),
   period: goalPeriodSchema.optional(),
   metricKey: metricKeySchema.nullable().optional(),
+  metricParam: areaKeySchema.nullable().optional(),
+  area: areaKeySchema.nullable().optional(),
   active: z.boolean().describe("Set false to pause the goal.").optional(),
   visibleOnDashboard: z.boolean().optional(),
   showInChecklist: z.boolean().optional(),
@@ -149,4 +162,70 @@ export const completeGoalInput = z.object({
 export const addNoteInput = z.object({
   note: z.string().trim().min(1).max(2000),
   date: localDateSchema.describe("Calendar day. Defaults to today.").optional(),
+});
+
+// --- Tasks -----------------------------------------------------------------
+
+/** Either an id or a name; names are matched loosely against open items. */
+const taskId = uuidSchema.describe("The task's id, if known.").optional();
+
+export const addTaskInput = z.object({
+  title: z.string().trim().min(1).max(160).describe("What needs doing."),
+  area: areaKeySchema.describe("Life area, e.g. career or freelance.").optional(),
+  dueDate: localDateSchema.describe("YYYY-MM-DD. Omit for no deadline.").optional(),
+  priority: taskPrioritySchema.describe("low | medium | high. Defaults to medium.").optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+export const completeTaskInput = z
+  .object({
+    taskId,
+    title: z.string().trim().min(1).max(160).describe("Name of the task, matched loosely.").optional(),
+    date: localDateSchema.describe("Day it was completed. Defaults to today.").optional(),
+  })
+  .refine((v) => v.taskId || v.title, { message: "Give a taskId or a title", path: ["title"] });
+
+export const updateTaskInput = z
+  .object({
+    taskId,
+    match: z.string().trim().min(1).max(160).describe("Current title, matched loosely.").optional(),
+    title: z.string().trim().min(1).max(160).optional(),
+    area: areaKeySchema.nullable().optional(),
+    dueDate: localDateSchema.nullable().optional(),
+    priority: taskPrioritySchema.optional(),
+    status: taskStatusSchema.optional(),
+    notes: z.string().trim().max(1000).nullable().optional(),
+  })
+  .refine((v) => v.taskId || v.match, { message: "Give a taskId or a match", path: ["match"] });
+
+export const listTasksInput = z.object({
+  status: z.enum(["todo", "done", "all"]).describe("Defaults to todo.").optional(),
+  area: areaKeySchema.optional(),
+  dueBefore: localDateSchema.describe("Only tasks due on or before this day (undated included).").optional(),
+});
+
+export const deleteTaskInput = z
+  .object({
+    taskId,
+    title: z.string().trim().min(1).max(160).optional(),
+  })
+  .refine((v) => v.taskId || v.title, { message: "Give a taskId or a title", path: ["title"] });
+
+// --- Time tracking ---------------------------------------------------------
+
+export const startTimerInput = z.object({
+  category: areaKeySchema.describe("What the time is for: study, freelance, work, career…"),
+  label: z.string().trim().max(120).describe('Optional detail, e.g. "system design prep".').optional(),
+});
+
+export const stopTimerInput = z.object({
+  notes: z.string().trim().max(500).optional(),
+});
+
+export const logTimeInput = z.object({
+  category: areaKeySchema,
+  minutes: minutesSchema.describe("Length of the finished session in minutes."),
+  label: z.string().trim().max(120).optional(),
+  date: localDateSchema.describe("Day of the session. Defaults to today.").optional(),
+  notes: z.string().trim().max(500).optional(),
 });

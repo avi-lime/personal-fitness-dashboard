@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { METRIC_LIST, emptyDayFacts, isMetricKey, resolveMetric, type DayFacts } from "@/lib/metrics";
+import {
+  METRIC_LIST,
+  emptyDayFacts,
+  isMetricKey,
+  metricLabel,
+  resolveMetric,
+  type DayFacts,
+} from "@/lib/metrics";
 import { METRIC_KEYS } from "@/lib/domain";
 
 const day = (date: string, overrides: Partial<DayFacts> = {}): DayFacts => ({
@@ -48,5 +55,30 @@ describe("resolveMetric", () => {
     ];
     expect(resolveMetric(null, "reading", manual)).toBe(45);
     expect(resolveMetric(null, "missing", manual)).toBe(0);
+  });
+});
+
+describe("parameterised metrics", () => {
+  it("resolves tracked time for one category, in hours", () => {
+    const days = [
+      day("2026-09-15", { minutesByCategory: { study: 30, freelance: 120 } }),
+      day("2026-09-16", { minutesByCategory: { study: 45 } }),
+    ];
+    expect(resolveMetric("time_minutes", "g", days, "study")).toBe(1.25);
+    expect(resolveMetric("time_minutes", "g", days, "freelance")).toBe(2);
+    expect(resolveMetric("time_minutes", "g", days, "work")).toBe(0);
+    // Without a category nothing can be counted.
+    expect(resolveMetric("time_minutes", "g", days, null)).toBe(0);
+  });
+
+  it("counts completed tasks", () => {
+    const days = [day("2026-09-15", { tasksCompleted: 2 }), day("2026-09-16", { tasksCompleted: 1 })];
+    expect(resolveMetric("tasks_completed", "g", days)).toBe(3);
+  });
+
+  it("labels a metric with its parameter", () => {
+    expect(metricLabel("time_minutes", "study")).toBe("Time tracked · Study");
+    expect(metricLabel("protein", null)).toBe("Protein from food log");
+    expect(metricLabel(null, null)).toBe("Manual entries");
   });
 });

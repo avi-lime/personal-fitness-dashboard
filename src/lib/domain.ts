@@ -39,8 +39,45 @@ export const METRIC_KEYS = [
   "sleep_hours",
   "workouts",
   "body_weight_kg",
+  "time_minutes",
+  "tasks_completed",
 ] as const;
 export type MetricKey = (typeof METRIC_KEYS)[number];
+
+/**
+ * Life areas. A closed list rather than a table: the assistant's tool schemas
+ * become a strict enum, which small models get right far more often than a
+ * free string that has to match a user-defined row. Adding one is a one-line
+ * edit here plus a label below.
+ */
+export const AREA_KEYS = [
+  "fitness",
+  "nutrition",
+  "work",
+  "freelance",
+  "career",
+  "study",
+  "money",
+  "personal",
+] as const;
+export type AreaKey = (typeof AREA_KEYS)[number];
+
+export const AREA_LABELS: Record<AreaKey, string> = {
+  fitness: "Fitness",
+  nutrition: "Nutrition",
+  work: "Work",
+  freelance: "Freelance",
+  career: "Career",
+  study: "Study",
+  money: "Money",
+  personal: "Personal",
+};
+
+export const TASK_PRIORITIES = ["low", "medium", "high"] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+
+export const TASK_STATUSES = ["todo", "done"] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 export const GOAL_STATUSES = ["not_started", "in_progress", "complete"] as const;
 export type GoalStatus = (typeof GOAL_STATUSES)[number];

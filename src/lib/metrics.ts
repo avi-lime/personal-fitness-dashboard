@@ -1,4 +1,4 @@
-import type { GoalType, MetricKey } from "./domain";
+import { AREA_LABELS, type AreaKey, type GoalType, type MetricKey } from "./domain";
 import type { LocalDate } from "./date";
 
 /**
@@ -19,6 +19,9 @@ export interface DayFacts {
   weightKg: number | null;
   /** Totals from explicit goal entries, keyed by goal id (manual goals). */
   manualByGoalId: Record<string, number>;
+  /** Finished time-tracking minutes, keyed by area/category. */
+  minutesByCategory: Record<string, number>;
+  tasksCompleted: number;
 }
 
 export function emptyDayFacts(date: LocalDate): DayFacts {
@@ -33,6 +36,8 @@ export function emptyDayFacts(date: LocalDate): DayFacts {
     workoutCount: 0,
     weightKg: null,
     manualByGoalId: {},
+    minutesByCategory: {},
+    tasksCompleted: 0,
   };
 }
 
@@ -43,6 +48,16 @@ export function emptyDayFacts(date: LocalDate): DayFacts {
  */
 export type MetricAggregation = "sum" | "latest";
 
+/**
+ * Some metrics take a parameter — "time tracked" needs to know *which*
+ * category. The parameter is stored on the goal (`metricParam`) and validated
+ * against the kind declared here.
+ */
+export interface MetricParam {
+  kind: "area";
+  label: string;
+}
+
 export interface MetricDefinition {
   key: MetricKey;
   label: string;
@@ -51,7 +66,8 @@ export interface MetricDefinition {
   /** Goal type suggested when a goal is created against this metric. */
   suggestedType: GoalType;
   aggregation: MetricAggregation;
-  select: (facts: DayFacts) => number | null;
+  param?: MetricParam;
+  select: (facts: DayFacts, param: string | null) => number | null;
 }
 
 /**
@@ -124,6 +140,24 @@ export const METRICS: Readonly<Record<MetricKey, MetricDefinition>> = {
     aggregation: "latest",
     select: (f) => f.weightKg,
   },
+  time_minutes: {
+    key: "time_minutes",
+    label: "Time tracked",
+    defaultUnit: "h",
+    suggestedType: "duration",
+    aggregation: "sum",
+    param: { kind: "area", label: "Category" },
+    // Goals are expressed in hours; sessions are stored in minutes.
+    select: (f, param) => (param ? (f.minutesByCategory[param] ?? 0) / 60 : 0),
+  },
+  tasks_completed: {
+    key: "tasks_completed",
+    label: "Tasks completed",
+    defaultUnit: "tasks",
+    suggestedType: "count",
+    aggregation: "sum",
+    select: (f) => f.tasksCompleted,
+  },
 };
 
 export const METRIC_LIST: MetricDefinition[] = Object.values(METRICS);
@@ -136,6 +170,15 @@ export function isMetricKey(value: string): value is MetricKey {
   return Object.prototype.hasOwnProperty.call(METRICS, value);
 }
 
+/** Display label for a goal's metric source, including its parameter. */
+export function metricLabel(metricKey: MetricKey | null, metricParam: string | null): string {
+  if (metricKey === null) return "Manual entries";
+  const metric = METRICS[metricKey];
+  if (!metric.param || !metricParam) return metric.label;
+  const paramLabel = AREA_LABELS[metricParam as AreaKey] ?? metricParam;
+  return `${metric.label} · ${paramLabel}`;
+}
+
 /**
  * Resolves a metric (or a manual goal) across one or more days.
  * Returns `null` only for `latest` metrics that have no data at all.
@@ -144,6 +187,7 @@ export function resolveMetric(
   metricKey: MetricKey | null,
   goalId: string,
   days: DayFacts[],
+  metricParam: string | null = null,
 ): number | null {
   if (metricKey === null) {
     return days.reduce((total, day) => total + (day.manualByGoalId[goalId] ?? 0), 0);
@@ -151,10 +195,10 @@ export function resolveMetric(
   const metric = METRICS[metricKey];
   if (metric.aggregation === "latest") {
     for (let i = days.length - 1; i >= 0; i -= 1) {
-      const value = metric.select(days[i]);
+      const value = metric.select(days[i], metricParam);
       if (value !== null && value !== undefined) return value;
     }
     return null;
   }
-  return days.reduce((total, day) => total + (metric.select(day) ?? 0), 0);
+  return days.reduce((total, day) => total + (metric.select(day, metricParam) ?? 0), 0);
 }

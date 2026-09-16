@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { goalEntries, goals } from "@/db/schema";
 import type { Goal } from "@/db/schema";
 import type { EntrySource } from "@/lib/domain";
-import type { GoalInput, GoalUpdate } from "@/lib/validation";
+import { validateMetricParam, type GoalInput, type GoalUpdate } from "@/lib/validation";
 import { toLocalDate, type LocalDate } from "@/lib/date";
 import { sortGoals, type GoalLike } from "@/lib/goals";
 import { getMetric } from "@/lib/metrics";
@@ -19,6 +19,8 @@ export function toGoalLike(goal: Goal): GoalLike {
     targetValue: goal.targetValue,
     period: goal.period,
     metricKey: goal.metricKey,
+    metricParam: goal.metricParam,
+    area: goal.area,
     active: goal.active,
     visibleOnDashboard: goal.visibleOnDashboard,
     showInChecklist: goal.showInChecklist,
@@ -64,6 +66,8 @@ export async function createGoal(userId: string, input: GoalInput): Promise<Goal
       targetValue: input.targetValue ?? null,
       period: input.period,
       metricKey: input.metricKey ?? null,
+      metricParam: input.metricParam ?? null,
+      area: input.area ?? null,
       visibleOnDashboard: input.visibleOnDashboard,
       showInChecklist: input.showInChecklist,
       color: input.color ?? null,
@@ -87,6 +91,8 @@ export async function updateGoal(
   if (patch.targetValue !== undefined) changes.targetValue = patch.targetValue ?? null;
   if (patch.period !== undefined) changes.period = patch.period;
   if (patch.metricKey !== undefined) changes.metricKey = patch.metricKey ?? null;
+  if (patch.metricParam !== undefined) changes.metricParam = patch.metricParam ?? null;
+  if (patch.area !== undefined) changes.area = patch.area ?? null;
   if (patch.visibleOnDashboard !== undefined) changes.visibleOnDashboard = patch.visibleOnDashboard;
   if (patch.showInChecklist !== undefined) changes.showInChecklist = patch.showInChecklist;
   if (patch.color !== undefined) changes.color = patch.color ?? null;
@@ -95,6 +101,19 @@ export async function updateGoal(
   if (patch.sortOrder !== undefined) changes.sortOrder = patch.sortOrder;
 
   if (Object.keys(changes).length === 0) return getGoal(userId, goalId);
+
+  // A partial update is only checkable against the merged goal.
+  if (patch.metricKey !== undefined || patch.metricParam !== undefined) {
+    const current = await getGoal(userId, goalId);
+    if (!current) return null;
+    const merged = {
+      metricKey: changes.metricKey === undefined ? current.metricKey : changes.metricKey,
+      metricParam: changes.metricParam === undefined ? current.metricParam : changes.metricParam,
+    };
+    const issues: string[] = [];
+    validateMetricParam(merged, { addIssue: (issue) => issues.push(issue.message) });
+    if (issues.length > 0) throw new Error(issues.join("; "));
+  }
 
   const [updated] = await db
     .update(goals)

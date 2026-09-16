@@ -12,7 +12,7 @@ import { computeGoalProgress, periodWindow, sortGoals } from "@/lib/goals";
 import { computeWeightStats } from "@/lib/aggregate";
 import { densify, loadDayFacts } from "@/server/services/day";
 import { eachDay, startOfWeek } from "@/lib/date";
-import { METRICS } from "@/lib/metrics";
+import { metricLabel } from "@/lib/metrics";
 import type {
   getFoodLogInput,
   getGoalInput,
@@ -93,7 +93,9 @@ export async function getGoals(ctx: McpContext) {
       targetValue: goal.targetValue,
       period: goal.period,
       metricKey: goal.metricKey,
-      metricLabel: goal.metricKey ? METRICS[goal.metricKey].label : "Manual entries",
+      metricParam: goal.metricParam,
+      area: goal.area,
+      metricLabel: metricLabel(goal.metricKey, goal.metricParam),
       active: goal.active,
       visibleOnDashboard: goal.visibleOnDashboard,
       showInChecklist: goal.showInChecklist,

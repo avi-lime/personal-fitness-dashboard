@@ -13,12 +13,15 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import type {
+  AreaKey,
   DashboardSectionVisibility,
   EntrySource,
   GoalPeriod,
   GoalType,
   MealType,
   MetricKey,
+  TaskPriority,
+  TaskStatus,
   Theme,
   UnitSystem,
 } from "@/lib/domain";
@@ -78,6 +81,9 @@ export const goals = pgTable(
     period: text("period").$type<GoalPeriod>().notNull().default("daily"),
     /** null = manual goal, progress comes from `goalEntries`. */
     metricKey: text("metric_key").$type<MetricKey>(),
+    /** Parameter for metrics that need one, e.g. the category of time tracked. */
+    metricParam: text("metric_param"),
+    area: text("area").$type<AreaKey>(),
     active: boolean("active").notNull().default(true),
     visibleOnDashboard: boolean("visible_on_dashboard").notNull().default(true),
     showInChecklist: boolean("show_in_checklist").notNull().default(true),
@@ -340,6 +346,56 @@ export const notes = pgTable(
   (table) => [index("notes_day_idx").on(table.userId, table.localDate)],
 );
 
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    area: text("area").$type<AreaKey>(),
+    dueDate: date("due_date"),
+    priority: text("priority").$type<TaskPriority>().notNull().default("medium"),
+    status: text("status").$type<TaskStatus>().notNull().default("todo"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    /** The user's calendar day of completion — what daily goals count. */
+    completedOn: date("completed_on"),
+    notes: text("notes"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    source: text("source").$type<EntrySource>().notNull().default("web"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("tasks_open_idx").on(table.userId, table.status, table.dueDate),
+    index("tasks_completed_idx").on(table.userId, table.completedOn),
+  ],
+);
+
+export const timeEntries = pgTable(
+  "time_entries",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    category: text("category").$type<AreaKey>().notNull(),
+    label: text("label"),
+    startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+    /** Null while the timer is running. */
+    endAt: timestamp("end_at", { withTimezone: true }),
+    /** Set when the entry ends; null while running. */
+    durationMinutes: integer("duration_minutes"),
+    /** The day the session started. */
+    localDate: date("local_date").notNull(),
+    notes: text("notes"),
+    source: text("source").$type<EntrySource>().notNull().default("web"),
+    createdAt: createdAt(),
+  },
+  (table) => [index("time_entries_day_idx").on(table.userId, table.localDate)],
+);
+
 /** Append-only audit trail for every mutation made through a tool. */
 export const mcpAuditLog = pgTable(
   "mcp_audit_log",
@@ -421,3 +477,5 @@ export type Workout = typeof workouts.$inferSelect;
 export type WorkoutExercise = typeof workoutExercises.$inferSelect;
 export type WorkoutSet = typeof workoutSets.$inferSelect;
 export type Note = typeof notes.$inferSelect;
+export type Task = typeof tasks.$inferSelect;
+export type TimeEntry = typeof timeEntries.$inferSelect;

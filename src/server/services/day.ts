@@ -1,7 +1,16 @@
 import "server-only";
 import { and, asc, between, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
-import { foodLogs, goalEntries, sleepEntries, waterLogs, weightEntries, workouts } from "@/db/schema";
+import {
+  foodLogs,
+  goalEntries,
+  sleepEntries,
+  tasks,
+  timeEntries,
+  waterLogs,
+  weightEntries,
+  workouts,
+} from "@/db/schema";
 import { emptyDayFacts, type DayFacts } from "@/lib/metrics";
 import { hoursBetween, type LocalDate } from "@/lib/date";
 import { round } from "@/lib/goals";
@@ -16,7 +25,7 @@ export async function loadDayFacts(
   startDate: LocalDate,
   endDate: LocalDate,
 ): Promise<Map<LocalDate, DayFacts>> {
-  const [food, water, weights, sleep, sessions, entries] = await Promise.all([
+  const [food, water, weights, sleep, sessions, entries, time, doneTasks] = await Promise.all([
     db
       .select({
         localDate: foodLogs.localDate,
@@ -72,6 +81,30 @@ export async function loadDayFacts(
       .where(
         and(eq(goalEntries.userId, userId), between(goalEntries.localDate, startDate, endDate)),
       ),
+    db
+      .select({
+        localDate: timeEntries.localDate,
+        category: timeEntries.category,
+        durationMinutes: timeEntries.durationMinutes,
+      })
+      .from(timeEntries)
+      .where(
+        and(
+          eq(timeEntries.userId, userId),
+          between(timeEntries.localDate, startDate, endDate),
+          isNotNull(timeEntries.endAt),
+        ),
+      ),
+    db
+      .select({ completedOn: tasks.completedOn })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, userId),
+          eq(tasks.status, "done"),
+          between(tasks.completedOn, startDate, endDate),
+        ),
+      ),
   ]);
 
   const map = new Map<LocalDate, DayFacts>();
@@ -100,6 +133,14 @@ export async function loadDayFacts(
   for (const row of entries) {
     const facts = factsFor(row.localDate);
     facts.manualByGoalId[row.goalId] = (facts.manualByGoalId[row.goalId] ?? 0) + row.value;
+  }
+  for (const row of time) {
+    const facts = factsFor(row.localDate);
+    facts.minutesByCategory[row.category] =
+      (facts.minutesByCategory[row.category] ?? 0) + (row.durationMinutes ?? 0);
+  }
+  for (const row of doneTasks) {
+    if (row.completedOn) factsFor(row.completedOn).tasksCompleted += 1;
   }
 
   for (const facts of map.values()) {

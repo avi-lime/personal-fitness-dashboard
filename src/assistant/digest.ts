@@ -1,6 +1,9 @@
 import "server-only";
 import type { McpContext } from "@/mcp/context";
 import { listGoals } from "@/server/services/goals";
+import { listTasks } from "@/server/services/tasks";
+import { getRunningTimer } from "@/server/services/time";
+import { AREA_LABELS } from "@/lib/domain";
 import { formatValue } from "@/lib/format";
 
 /**
@@ -9,7 +12,11 @@ import { formatValue } from "@/lib/format";
  * instead of a read round trip. Kept small: names and a few numbers.
  */
 export async function buildDigest(ctx: McpContext): Promise<string> {
-  const goals = await listGoals(ctx.userId);
+  const [goals, openTasks, running] = await Promise.all([
+    listGoals(ctx.userId),
+    listTasks(ctx.userId, { status: "todo", limit: 30 }),
+    getRunningTimer(ctx.userId),
+  ]);
   const lines: string[] = [];
 
   if (goals.length === 0) {
@@ -25,6 +32,22 @@ export async function buildDigest(ctx: McpContext): Promise<string> {
       lines.push(`- ${goal.name}${state} · ${goal.id} · ${target}`);
     }
   }
+
+  if (openTasks.length === 0) {
+    lines.push("Open tasks: none.");
+  } else {
+    lines.push("Open tasks (title · due · priority):");
+    for (const task of openTasks) {
+      const overdue = task.dueDate && task.dueDate < ctx.today ? " OVERDUE" : "";
+      lines.push(`- ${task.title} · ${task.dueDate ?? "no date"}${overdue} · ${task.priority}`);
+    }
+  }
+
+  lines.push(
+    running
+      ? `Running timer: ${AREA_LABELS[running.category]}${running.label ? ` (${running.label})` : ""} since ${running.startAt.toISOString()}.`
+      : "Running timer: none.",
+  );
 
   return lines.join("\n");
 }
