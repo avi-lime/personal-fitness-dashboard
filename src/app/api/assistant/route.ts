@@ -4,7 +4,12 @@ import { z } from "zod";
 import { getCurrentUser, getProfileFor } from "@/server/auth";
 import { contextForUser } from "@/mcp/context";
 import { TOOLS } from "@/mcp/registry";
-import { assistantModel, createAssistantClient, isAssistantConfigured } from "@/assistant/client";
+import {
+  assistantModel,
+  createAssistantClient,
+  describeAssistantError,
+  isAssistantConfigured,
+} from "@/assistant/client";
 import { buildDigest } from "@/assistant/digest";
 import { buildSystemPrompt } from "@/assistant/prompt";
 import { runAssistant } from "@/assistant/runner";
@@ -57,6 +62,11 @@ export async function POST(request: Request) {
     if (response.actions.length > 0) revalidatePath("/", "layout");
     return NextResponse.json(response, { headers: { "cache-control": "no-store" } });
   } catch (error) {
-    return NextResponse.json({ error: describeError(error) }, { status: 500 });
+    const status =
+      typeof error === "object" && error !== null && "status" in error ? 502 : 500;
+    return NextResponse.json(
+      { error: status === 502 ? describeAssistantError(error) : describeError(error) },
+      { status },
+    );
   }
 }

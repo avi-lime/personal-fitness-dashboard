@@ -46,6 +46,22 @@ export function createAssistantClient(): ChatClient {
   };
 }
 
+/** Turns a provider error into something a person can act on. */
+export function describeAssistantError(error: unknown): string {
+  const status =
+    typeof error === "object" && error !== null && "status" in error
+      ? (error as { status: unknown }).status
+      : null;
+  if (status === 400 || status === 401 || status === 403) {
+    return "The assistant's API key was rejected. Check ASSISTANT_API_KEY (and ASSISTANT_BASE_URL if you changed the provider).";
+  }
+  if (status === 404) {
+    return `The model "${assistantModel()}" was not found at this provider. Check ASSISTANT_MODEL.`;
+  }
+  if (status === 429) return "The assistant is rate-limited right now — try again in a minute.";
+  return error instanceof Error && error.message ? error.message : "The assistant did not respond.";
+}
+
 /** True for the provider's "slow down" response; surfaced, never retried in a loop. */
 export function isRateLimitError(error: unknown): boolean {
   return (

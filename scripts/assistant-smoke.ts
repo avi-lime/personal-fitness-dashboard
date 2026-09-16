@@ -58,7 +58,8 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+main().catch(async (error) => {
+  const { describeAssistantError } = await import("../src/assistant/client");
+  console.error(describeAssistantError(error));
   process.exit(1);
 });
