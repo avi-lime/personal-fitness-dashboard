@@ -19,7 +19,7 @@ async function main() {
   // Imported after dotenv so the env validator sees the values.
   const [{ ensureOwnerUser, getProfileFor }, { contextForUser }, { TOOLS }, client, digest, prompt, runner] =
     await Promise.all([
-      import("../src/server/auth"),
+      import("../src/server/services/profile"),
       import("../src/mcp/context"),
       import("../src/mcp/registry"),
       import("../src/assistant/client"),

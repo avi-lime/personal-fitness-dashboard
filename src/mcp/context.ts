@@ -1,6 +1,6 @@
 import "server-only";
 import type { AuthInfo } from "@modelcontextprotocol/server";
-import { getProfileFor } from "@/server/auth";
+import { getProfileFor } from "@/server/services/profile";
 import { toLocalDate, type LocalDate } from "@/lib/date";
 import type { EntrySource } from "@/lib/domain";
 
