@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { AuthInfo } from "@modelcontextprotocol/server";
 import { getEnv } from "@/lib/env";
 import { ensureOwnerUser } from "@/server/auth";
+import { MCP_CHANNEL_HEADER } from "./url-token";
 
 export const MCP_SCOPES = ["dashboard:read", "dashboard:write"] as const;
 
@@ -24,7 +25,7 @@ function safeEqual(a: string, b: string): boolean {
  * a `WWW-Authenticate` challenge; the token itself is never echoed back.
  */
 export async function verifyMcpToken(
-  _request: Request,
+  request: Request,
   bearerToken?: string,
 ): Promise<AuthInfo | undefined> {
   const expected = getEnv().MCP_TOKEN;
@@ -32,11 +33,12 @@ export async function verifyMcpToken(
   if (!safeEqual(bearerToken, expected)) return undefined;
 
   const user = await ensureOwnerUser();
+  const channel = request.headers.get(MCP_CHANNEL_HEADER) === "chatgpt" ? "chatgpt" : "mcp";
   return {
     token: bearerToken,
     clientId: "life-dashboard-mcp",
     scopes: [...MCP_SCOPES],
-    extra: { userId: user.id, username: user.username },
+    extra: { userId: user.id, username: user.username, channel },
   };
 }
 

@@ -6,7 +6,8 @@ import { SESSION_COOKIE } from "@/lib/auth/session";
  * again on the server for each request that touches data; this check only keeps
  * unauthenticated browsers away from the UI.
  *
- * `/api/mcp` is deliberately excluded: it authenticates with a bearer token.
+ * `/api/mcp` (and `/api/mcp/<token>`) is deliberately excluded: it authenticates
+ * with the MCP token instead.
  */
 export default function proxy(request: NextRequest) {
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);

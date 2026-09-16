@@ -37,5 +37,6 @@ export async function contextForUser(userId: string, source: EntrySource): Promi
 export async function resolveContext(authInfo: AuthInfo | undefined): Promise<McpContext> {
   const userId = authInfo?.extra?.userId;
   if (typeof userId !== "string" || userId.length === 0) throw new McpAuthError();
-  return contextForUser(userId, "mcp");
+  const source: EntrySource = authInfo?.extra?.channel === "chatgpt" ? "chatgpt" : "mcp";
+  return contextForUser(userId, source);
 }

@@ -244,6 +244,29 @@ Any client that supports remote servers with a static header works:
   "headers": { "Authorization": "Bearer <MCP_TOKEN>" } } } }
 ```
 
+### Use it from ChatGPT
+
+ChatGPT's MCP connectors only support OAuth or "No authentication" — no static header. So the same
+server is also served at a URL that carries the token:
+
+```
+https://<your-deployment>/api/mcp/<MCP_TOKEN>
+```
+
+1. Vercel → project → Settings → Deployment Protection → **off** for production (ChatGPT's servers
+   must be able to reach the endpoint).
+2. ChatGPT → Settings → Apps & Connectors → Advanced → enable **Developer mode**.
+3. Connectors → **Create**: name `Life Dashboard`, MCP server URL as above,
+   Authentication **No authentication**, trust the connector, Create.
+4. In a chat, add the connector from the **+** menu (or just ask — "log 500 ml water",
+   "what's on my plan today", "add a task to renew my passport by Friday"). ChatGPT asks before
+   running write tools the first time; you can allow them for the conversation.
+
+The path token is verified exactly like the header token (wrong token → 401) and the audit log
+records these calls with channel `chatgpt`. **Treat the URL as a secret** — anyone who has it
+can read and write everything, and URLs can end up in logs. To revoke it, rotate `MCP_TOKEN`
+in Vercel and edit the connector. Any other client that cannot send headers can use the same URL.
+
 ### Tools (42)
 
 | Family | Read | Write | Destructive (confirmed by the in-app assistant) |
@@ -261,8 +284,8 @@ action in one call.
 
 Safety: no SQL and no generic execute tool; all input is validated with the same Zod schemas the
 web forms use; the user id comes from the verified token, never from arguments; every mutation is
-appended to `mcp_audit_log` with the tool, its arguments, a summary and the channel (`mcp` or
-`assistant`); `complete_goal` refuses metric-backed goals so progress cannot be faked.
+appended to `mcp_audit_log` with the tool, its arguments, a summary and the channel (`mcp`,
+`chatgpt` or `assistant`); `complete_goal` refuses metric-backed goals so progress cannot be faked.
 
 ## Monitor mode
 

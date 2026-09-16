@@ -125,7 +125,7 @@ export function TimePanel({
                 placeholder="optional, e.g. system design prep"
               />
             </Field>
-            <Button type="submit" size="sm" disabled={pending || !category}>
+            <Button type="submit" size="sm" className="justify-self-start" disabled={pending || !category}>
               <Play className="size-4" aria-hidden /> Start
             </Button>
           </form>
@@ -174,7 +174,7 @@ export function TimePanel({
           <Card className="gap-3 p-4">
             <h2 className="text-sm font-medium">Log a finished session</h2>
             <form
-              className="grid grid-cols-2 items-end gap-3 md:grid-cols-[11rem_7rem_auto]"
+              className="grid grid-cols-2 items-end gap-3 md:grid-cols-[11rem_7rem_max-content]"
               onSubmit={(event) => {
                 event.preventDefault();
                 const minutes = Number.parseInt(logMinutes, 10);
@@ -197,7 +197,7 @@ export function TimePanel({
                   placeholder="45"
                 />
               </Field>
-              <Button type="submit" size="sm" disabled={pending || !logMinutes}>
+              <Button type="submit" size="sm" className="justify-self-start" disabled={pending || !logMinutes}>
                 Log
               </Button>
             </form>
