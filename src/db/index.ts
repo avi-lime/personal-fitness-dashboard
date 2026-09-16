@@ -17,11 +17,16 @@ export type Database = PostgresJsDatabase<typeof schema>;
  * A single pooled client is reused per process. `max: 1` keeps serverless
  * invocations from exhausting connection slots, and `prepare: false` is
  * required by transaction-mode poolers such as pgBouncer (Neon, Supabase).
+ *
+ * Only the *connection pool* is cached globally. The Drizzle wrapper is cheap
+ * and is rebuilt per module instance so that, under dev hot reload, it always
+ * carries the current `schema` (a cached wrapper kept an outdated table list).
  */
 const globalForDb = globalThis as unknown as {
   __lifeDashboardSql?: ReturnType<typeof postgres>;
-  __lifeDashboardDb?: Database;
 };
+
+let instance: Database | null = null;
 
 function client(): ReturnType<typeof postgres> {
   if (globalForDb.__lifeDashboardSql) return globalForDb.__lifeDashboardSql;
@@ -34,10 +39,8 @@ function client(): ReturnType<typeof postgres> {
 }
 
 function resolve(): Database {
-  if (!globalForDb.__lifeDashboardDb) {
-    globalForDb.__lifeDashboardDb = drizzle(client(), { schema });
-  }
-  return globalForDb.__lifeDashboardDb;
+  if (!instance) instance = drizzle(client(), { schema });
+  return instance;
 }
 
 /** Behaves exactly like a Drizzle instance; connects on the first property access. */
