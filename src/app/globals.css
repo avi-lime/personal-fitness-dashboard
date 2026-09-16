@@ -155,6 +155,15 @@
   html {
     @apply font-sans;
   }
+  /* Every clickable control gets a hand cursor; disabled ones do not. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  label[for],
+  summary {
+    cursor: pointer;
+  }
   /* Tabular figures keep changing numbers from shifting the layout. */
   .tabular {
     font-variant-numeric: tabular-nums;
