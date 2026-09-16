@@ -51,11 +51,11 @@ export async function logFoodTool(ctx: McpContext, args: z.infer<typeof logFoodI
       notes: args.notes ?? null,
       occurredAt: args.timestamp ?? null,
     },
-    "mcp",
+    ctx.source,
   );
 
   const summary = `Logged ${formatValue(entry.calories)} kcal — ${entry.name} (${entry.mealType}) on ${entry.localDate}.`;
-  await recordMutation(ctx.userId, "log_food", args, summary);
+  await recordMutation(ctx.userId, "log_food", args, summary, ctx.source);
   return {
     summary,
     data: {
@@ -78,10 +78,10 @@ export async function logWaterTool(ctx: McpContext, args: z.infer<typeof logWate
     ctx.timezone,
     args.milliliters,
     args.timestamp ?? null,
-    "mcp",
+    ctx.source,
   );
   const summary = `Logged ${entry.milliliters} ml of water on ${entry.localDate}.`;
-  await recordMutation(ctx.userId, "log_water", args, summary);
+  await recordMutation(ctx.userId, "log_water", args, summary, ctx.source);
   return {
     summary,
     data: {
@@ -100,10 +100,10 @@ export async function logWeightTool(ctx: McpContext, args: z.infer<typeof logWei
     args.kilograms,
     args.timestamp ?? null,
     args.note ?? null,
-    "mcp",
+    ctx.source,
   );
   const summary = `Recorded ${formatValue(entry.weightKg, 2)} kg on ${entry.localDate}.`;
-  await recordMutation(ctx.userId, "log_weight", args, summary);
+  await recordMutation(ctx.userId, "log_weight", args, summary, ctx.source);
   return {
     summary,
     data: {
@@ -126,11 +126,11 @@ export async function logSleepTool(ctx: McpContext, args: z.infer<typeof logSlee
       quality: args.quality ?? null,
       note: args.note ?? null,
     },
-    "mcp",
+    ctx.source,
   );
   const hours = (entry.endAt.getTime() - entry.startAt.getTime()) / 3_600_000;
   const summary = `Logged ${formatValue(hours, 2)} h of sleep for ${entry.localDate}.`;
-  await recordMutation(ctx.userId, "log_sleep", args, summary);
+  await recordMutation(ctx.userId, "log_sleep", args, summary, ctx.source);
   return {
     summary,
     data: {
@@ -149,7 +149,7 @@ export async function logWorkoutTool(ctx: McpContext, args: z.infer<typeof logWo
     ctx.userId,
     ctx.timezone,
     { name: args.workoutName, date: args.date ?? null, notes: args.notes ?? null },
-    "mcp",
+    ctx.source,
   );
   const completed = args.completed ?? true;
   if (completed) await setWorkoutCompletion(ctx.userId, workout.id, true);
@@ -157,7 +157,7 @@ export async function logWorkoutTool(ctx: McpContext, args: z.infer<typeof logWo
   const summary = `Created workout "${workout.name}" on ${workout.date}${
     completed ? " and marked it complete" : ""
   }.`;
-  await recordMutation(ctx.userId, "log_workout", args, summary);
+  await recordMutation(ctx.userId, "log_workout", args, summary, ctx.source);
   return {
     summary,
     data: { id: workout.id, name: workout.name, date: workout.date, completed },
@@ -180,7 +180,7 @@ export async function addGoalTool(ctx: McpContext, args: z.infer<typeof addGoalI
   const summary = `Created goal "${goal.name}"${
     goal.targetValue !== null ? ` with a target of ${formatValue(goal.targetValue)}${goal.unit ? ` ${goal.unit}` : ""} per ${goal.period}` : " with no target"
   }.`;
-  await recordMutation(ctx.userId, "add_goal", args, summary);
+  await recordMutation(ctx.userId, "add_goal", args, summary, ctx.source);
   return {
     summary,
     data: {
@@ -205,7 +205,7 @@ export async function updateGoalTool(ctx: McpContext, args: z.infer<typeof updat
     changed.length === 0
       ? `No changes requested for "${updated.name}".`
       : `Updated ${changed.join(", ")} on goal "${updated.name}".`;
-  await recordMutation(ctx.userId, "update_goal", args, summary);
+  await recordMutation(ctx.userId, "update_goal", args, summary, ctx.source);
   return {
     summary,
     data: {
@@ -229,7 +229,7 @@ export async function removeGoalTool(ctx: McpContext, args: z.infer<typeof remov
   await archiveGoal(ctx.userId, args.goalId);
 
   const summary = `Archived goal "${goal.name}". Its past entries are kept.`;
-  await recordMutation(ctx.userId, "remove_goal", args, summary);
+  await recordMutation(ctx.userId, "remove_goal", args, summary, ctx.source);
   return { summary, data: { id: goal.id, name: goal.name, archived: true } };
 }
 
@@ -246,12 +246,12 @@ export async function completeGoalTool(ctx: McpContext, args: z.infer<typeof com
     date: args.date ?? null,
     value: args.value ?? null,
     timezone: ctx.timezone,
-    source: "mcp",
+    source: ctx.source,
   });
   if (!result) throw new ToolFailure(`No goal found with id ${args.goalId}.`);
 
   const summary = `Recorded ${formatValue(result.value)}${goal.unit ? ` ${goal.unit}` : ""} for "${goal.name}" on ${result.date}.`;
-  await recordMutation(ctx.userId, "complete_goal", args, summary);
+  await recordMutation(ctx.userId, "complete_goal", args, summary, ctx.source);
   return {
     summary,
     data: { goalId: goal.id, name: goal.name, date: result.date, value: result.value },
@@ -259,8 +259,8 @@ export async function completeGoalTool(ctx: McpContext, args: z.infer<typeof com
 }
 
 export async function addNoteTool(ctx: McpContext, args: z.infer<typeof addNoteInput>) {
-  const note = await addNote(ctx.userId, ctx.timezone, args.note, args.date ?? null, "mcp");
+  const note = await addNote(ctx.userId, ctx.timezone, args.note, args.date ?? null, ctx.source);
   const summary = `Added a note for ${note.localDate}.`;
-  await recordMutation(ctx.userId, "add_note", args, summary);
+  await recordMutation(ctx.userId, "add_note", args, summary, ctx.source);
   return { summary, data: { id: note.id, date: note.localDate, body: note.body } };
 }

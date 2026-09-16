@@ -12,6 +12,11 @@ const schema = z.object({
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
   /** Bearer token for the MCP endpoint. Absent = MCP endpoint disabled. */
   MCP_TOKEN: z.string().min(24, "MCP_TOKEN must be at least 24 characters").optional(),
+  /** Key for the assistant's model provider. Absent = assistant disabled. */
+  ASSISTANT_API_KEY: z.string().min(10).optional(),
+  /** Any OpenAI-compatible chat endpoint; defaults to Gemini's. */
+  ASSISTANT_BASE_URL: z.string().url().optional(),
+  ASSISTANT_MODEL: z.string().min(1).optional(),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 

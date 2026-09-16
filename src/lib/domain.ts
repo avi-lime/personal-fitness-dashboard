@@ -13,7 +13,7 @@ export type GoalPeriod = (typeof GOAL_PERIODS)[number];
 export const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack", "other"] as const;
 export type MealType = (typeof MEAL_TYPES)[number];
 
-export const ENTRY_SOURCES = ["web", "mcp", "seed"] as const;
+export const ENTRY_SOURCES = ["web", "mcp", "assistant", "seed"] as const;
 export type EntrySource = (typeof ENTRY_SOURCES)[number];
 
 export const UNIT_SYSTEMS = ["metric", "imperial"] as const;

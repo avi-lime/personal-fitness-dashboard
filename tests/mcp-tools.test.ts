@@ -40,7 +40,7 @@ async function createUser(label: string): Promise<McpContext> {
   const username = `vitest-${label}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const [user] = await db.insert(users).values({ username }).returning();
   await db.insert(profiles).values({ userId: user.id, timezone: "UTC" });
-  return { userId: user.id, timezone: "UTC", today: toLocalDate(new Date(), "UTC") };
+  return { userId: user.id, timezone: "UTC", today: toLocalDate(new Date(), "UTC"), source: "mcp" };
 }
 
 suite("MCP tools", () => {

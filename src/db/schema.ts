@@ -58,6 +58,7 @@ export const profiles = pgTable("profiles", {
   timezone: text("timezone").notNull().default("UTC"),
   unitSystem: text("unit_system").$type<UnitSystem>().notNull().default("metric"),
   theme: text("theme").$type<Theme>().notNull().default("system"),
+  currency: text("currency").notNull().default("INR"),
   dashboardSections: jsonb("dashboard_sections").$type<Partial<DashboardSectionVisibility>>(),
   updatedAt: updatedAt(),
 });
@@ -339,7 +340,7 @@ export const notes = pgTable(
   (table) => [index("notes_day_idx").on(table.userId, table.localDate)],
 );
 
-/** Append-only audit trail for every MCP mutation. */
+/** Append-only audit trail for every mutation made through a tool. */
 export const mcpAuditLog = pgTable(
   "mcp_audit_log",
   {
@@ -350,6 +351,8 @@ export const mcpAuditLog = pgTable(
     tool: text("tool").notNull(),
     arguments: jsonb("arguments").notNull().default(sql`'{}'::jsonb`),
     resultSummary: text("result_summary"),
+    /** Who asked: an MCP client or the in-app assistant. */
+    channel: text("channel").$type<EntrySource>().notNull().default("mcp"),
     createdAt: createdAt(),
   },
   (table) => [index("mcp_audit_log_idx").on(table.userId, table.createdAt)],

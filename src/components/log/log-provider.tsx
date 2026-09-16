@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from "react";
 import { FoodDialog } from "./food-dialog";
 import { NoteDialog } from "./note-dialog";
-import { QuickEntryDialog } from "./quick-entry-dialog";
+import { AssistantDialog } from "@/components/assistant/assistant-dialog";
 import { SleepDialog } from "./sleep-dialog";
 import { WaterDialog } from "./water-dialog";
 import { WeightDialog } from "./weight-dialog";
@@ -26,16 +26,29 @@ export function useLogDialogs(): LogContextValue {
   return context;
 }
 
+/** True when the key event targets a place the user is typing. */
+function isEditable(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT"
+  );
+}
+
 export function LogProvider({
   children,
   foods,
   workoutTemplates,
   latestWeight,
+  assistantEnabled,
 }: {
   children: ReactNode;
   foods: Food[];
   workoutTemplates: WorkoutTemplateOption[];
   latestWeight: number | null;
+  assistantEnabled: boolean;
 }) {
   const [active, setActive] = useState<LogDialogKind | null>(null);
 
@@ -46,6 +59,7 @@ export function LogProvider({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== "k" || !(event.metaKey || event.ctrlKey)) return;
+      if (isEditable(event.target)) return;
       event.preventDefault();
       setActive("quick");
     };
@@ -62,7 +76,7 @@ export function LogProvider({
   return (
     <LogContext.Provider value={value}>
       {children}
-      <QuickEntryDialog {...bind("quick")} />
+      <AssistantDialog {...bind("quick")} assistantEnabled={assistantEnabled} />
       <FoodDialog {...bind("food")} foods={foods} />
       <WaterDialog {...bind("water")} />
       <WeightDialog {...bind("weight")} suggested={latestWeight} />

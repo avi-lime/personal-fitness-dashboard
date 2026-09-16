@@ -5,6 +5,7 @@ import { listFoods } from "@/server/services/food";
 import { latestWeight } from "@/server/services/body";
 import { listWorkoutTemplates } from "@/server/services/workouts";
 import { toLocalDate } from "@/lib/date";
+import { isAssistantConfigured } from "@/assistant/client";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const { user, timezone } = await requireContext();
@@ -19,6 +20,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       foods={foods}
       workoutTemplates={templates.map((template) => ({ id: template.id, name: template.name }))}
       latestWeight={weight?.weightKg ?? null}
+      assistantEnabled={isAssistantConfigured()}
     >
       <div className="flex min-h-dvh flex-col">
         <a
