@@ -2,13 +2,42 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Mic } from "lucide-react";
 import { MORE_ITEM, NAV_ITEMS, isActivePath } from "./nav-items";
+import { useLogDialogs } from "@/components/log/log-provider";
+import { useSpeechRecognition } from "@/components/assistant/use-speech-recognition";
 import { cn } from "@/lib/utils";
 
-/** Phone tab bar. Five destinations, thumb-sized, above the home indicator. */
+/**
+ * Phone tab bar. The microphone is the raised centre action, so it never
+ * covers page controls the way a floating button would.
+ */
 export function MobileNav() {
   const pathname = usePathname();
+  const { open } = useLogDialogs();
+  const { supported } = useSpeechRecognition(() => {});
   const items = [...NAV_ITEMS.filter((item) => item.mobile), MORE_ITEM].slice(0, 5);
+  const left = items.slice(0, 2);
+  const right = items.slice(2);
+
+  const tab = (item: (typeof items)[number]) => {
+    const active = isActivePath(pathname, item.href);
+    return (
+      <li key={item.href}>
+        <Link
+          href={item.href}
+          aria-current={active ? "page" : undefined}
+          className={cn(
+            "flex h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
+            active ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
+          <item.icon className={cn("size-5", active && "text-brand")} aria-hidden />
+          {item.label}
+        </Link>
+      </li>
+    );
+  };
 
   return (
     <nav
@@ -16,25 +45,19 @@ export function MobileNav() {
       className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 backdrop-blur md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <ul className="grid grid-cols-5">
-        {items.map((item) => {
-          const active = isActivePath(pathname, item.href);
-          return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
-                  active ? "text-foreground" : "text-muted-foreground",
-                )}
-              >
-                <item.icon className={cn("size-5", active && "text-brand")} aria-hidden />
-                {item.label}
-              </Link>
-            </li>
-          );
-        })}
+      <ul className="grid grid-cols-6 items-end">
+        {left.map(tab)}
+        <li className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => open("quick", { listen: supported })}
+            aria-label={supported ? "Dictate a command" : "Quick entry"}
+            className="-mt-5 flex size-14 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-lg outline-none transition-transform active:scale-95 focus-visible:ring-3 focus-visible:ring-brand/40"
+          >
+            <Mic className="size-6" aria-hidden />
+          </button>
+        </li>
+        {right.map(tab)}
       </ul>
     </nav>
   );

@@ -46,7 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
           <Toaster
             position="bottom-right"
-            mobileOffset={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)", right: 16, left: 16 }}
+            mobileOffset={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4.5rem)", right: 16, left: 16 }}
           />
         </ThemeProvider>
       </body>
