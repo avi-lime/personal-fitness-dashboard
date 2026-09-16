@@ -6,7 +6,7 @@ import { Maximize2, Minimize2, X } from "lucide-react";
 import { Sparkline } from "@/components/charts/sparkline";
 import { ProgressBar } from "@/components/charts/progress-bar";
 import { toLocalTime } from "@/lib/date";
-import { formatDuration, formatSigned, formatValue } from "@/lib/format";
+import { formatDuration, formatMoney, formatSigned, formatValue } from "@/lib/format";
 import type { MonitorPayload } from "@/server/services/monitor";
 import { cn } from "@/lib/utils";
 
@@ -158,6 +158,51 @@ export function MonitorView({ initial }: { initial: MonitorPayload }) {
           </div>
 
           <div className="space-y-8 xl:border-l xl:pl-10">
+            <div>
+              <h2 className="mb-2 text-sm tracking-[0.2em] text-muted-foreground uppercase">Plan</h2>
+              {data.plan.total === 0 ? (
+                <p className="text-[clamp(1.1rem,1.6vw,1.6rem)] text-muted-foreground">Nothing planned</p>
+              ) : (
+                <>
+                  <p className="text-[clamp(1.1rem,1.6vw,1.6rem)] font-medium">
+                    {data.plan.current
+                      ? `${data.plan.current.label} · until ${data.plan.current.endTime}`
+                      : data.plan.next
+                        ? `Next: ${data.plan.next.label} at ${data.plan.next.startTime}`
+                        : "Plan complete"}
+                  </p>
+                  <p className="tabular text-muted-foreground">
+                    {data.plan.done}/{data.plan.total} blocks done
+                    {data.timer ? ` · timer running: ${data.timer.category}` : ""}
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div>
+              <h2 className="mb-2 text-sm tracking-[0.2em] text-muted-foreground uppercase">Tasks</h2>
+              <p className="text-[clamp(1.1rem,1.6vw,1.6rem)] font-medium">
+                {data.tasks.next ?? "Nothing open"}
+              </p>
+              <p className="tabular text-muted-foreground">
+                {data.tasks.open} open
+                {data.tasks.overdue > 0 ? <span className="text-brand"> · {data.tasks.overdue} overdue</span> : null}
+              </p>
+            </div>
+
+            <div>
+              <h2 className="mb-2 text-sm tracking-[0.2em] text-muted-foreground uppercase">Money</h2>
+              <p className="tabular text-[clamp(1.4rem,2.4vw,2.4rem)] font-semibold">
+                {formatMoney(data.money.spentToday, data.money.currency)}
+              </p>
+              <p className="tabular text-muted-foreground">
+                spent today
+                {data.money.nextBill
+                  ? ` · ${data.money.nextBill.name} ${formatMoney(data.money.nextBill.amount, data.money.currency)} due ${data.money.nextBill.dueDate}`
+                  : ""}
+              </p>
+            </div>
+
             <div>
               <h2 className="mb-2 text-sm tracking-[0.2em] text-muted-foreground uppercase">
                 Training

@@ -7,6 +7,7 @@ import { ThemeSection } from "@/components/settings/theme-section";
 import { DataSection } from "@/components/settings/data-section";
 import { requireContext } from "@/server/auth";
 import { countGoals } from "@/server/services/goals";
+import { NAV_ITEMS } from "@/components/layout/nav-items";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Settings · Life Dashboard" };
@@ -26,9 +27,22 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
+        <h1 className="font-display text-3xl">Settings</h1>
         <p className="text-sm text-muted-foreground">Signed in as {user.username}.</p>
       </div>
+
+      <Card className="gap-3 p-4 md:hidden">
+        <h2 className="text-sm font-medium">All pages</h2>
+        <div className="grid grid-cols-2 gap-2">
+          {NAV_ITEMS.map((item) => (
+            <Button key={item.href} variant="outline" size="sm" className="justify-start" asChild>
+              <Link href={item.href}>
+                <item.icon className="size-4" aria-hidden /> {item.label}
+              </Link>
+            </Button>
+          ))}
+        </div>
+      </Card>
 
       <ProfileForm profile={profile} timezones={timezoneOptions(profile.timezone)} />
 

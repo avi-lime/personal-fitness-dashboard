@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ProgressBar } from "@/components/charts/progress-bar";
@@ -23,10 +24,16 @@ export function NextActionCard({
             Next
           </p>
           <p className="font-display mt-2 flex items-start gap-2 text-3xl leading-tight lg:items-center lg:text-4xl">
-            {action.type === "goal" ? (
+            {action.type !== "idle" ? (
               <ArrowRight className="mt-1.5 size-6 shrink-0 text-brand lg:mt-0" aria-hidden />
             ) : null}
-            <span className="min-w-0 break-words">{action.label}</span>
+            {action.href ? (
+              <Link href={action.href} className="min-w-0 break-words hover:underline underline-offset-4">
+                {action.label}
+              </Link>
+            ) : (
+              <span className="min-w-0 break-words">{action.label}</span>
+            )}
           </p>
           {action.detail ? (
             <p className="tabular mt-1 text-sm text-muted-foreground">{action.detail}</p>

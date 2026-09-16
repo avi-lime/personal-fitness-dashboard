@@ -166,9 +166,13 @@ export type GoalStatus = (typeof GOAL_STATUSES)[number];
 export const DASHBOARD_SECTIONS = [
   "nextAction",
   "today",
+  "plan",
+  "tasks",
   "quickActions",
   "training",
   "body",
+  "money",
+  "career",
   "weekly",
   "notes",
 ] as const;
@@ -179,9 +183,13 @@ export type DashboardSectionVisibility = Record<DashboardSection, boolean>;
 export const DEFAULT_DASHBOARD_SECTIONS: DashboardSectionVisibility = {
   nextAction: true,
   today: true,
+  plan: true,
+  tasks: true,
   quickActions: true,
   training: true,
   body: true,
+  money: true,
+  career: true,
   weekly: true,
   notes: true,
 };

@@ -1,12 +1,14 @@
 # Life Dashboard
 
-A private, single-person dashboard for goals, nutrition, training and recovery — with an
-MCP endpoint so an AI assistant can read and update it through narrowly scoped tools.
+A private, single-person dashboard for the whole of life — goals, food, training, body,
+tasks, tracked time, a planned day, a job-search pipeline and money — that you can drive by
+**voice**: say what should happen and the app does it through its own tools. The same tools are
+exposed over MCP, so an AI assistant of your choice can read and update the dashboard too.
 
 It is deliberately **not** a fitness app with fixed features. Everything on the dashboard is
 generated from a generic goal system: a goal has a type, a period, an optional target and a
-*metric source*. Change the goals and the dashboard, checklist, weekly review and MCP
-responses all follow.
+*metric source* — "protein from the food log", "time tracked · study", "money spent · food".
+Change the goals and the dashboard, checklist, weekly review and assistant follow.
 
 ---
 
@@ -16,14 +18,17 @@ responses all follow.
 - [Stack](#stack)
 - [Local setup](#local-setup)
 - [Environment variables](#environment-variables)
+- [The assistant (voice and text)](#the-assistant-voice-and-text)
+- [Using it on a phone](#using-it-on-a-phone)
 - [Database and migrations](#database-and-migrations)
 - [Development commands](#development-commands)
 - [Tests](#tests)
 - [Deploying to Vercel](#deploying-to-vercel)
 - [MCP server](#mcp-server)
 - [Monitor mode](#monitor-mode)
+- [Troubleshooting](#troubleshooting)
 - [Security notes](#security-notes)
-- [Adding a goal type or metric](#adding-a-goal-type-or-metric)
+- [Adding a metric, area or tool](#adding-a-metric-area-or-tool)
 - [Architecture notes](#architecture-notes)
 
 ---
@@ -32,97 +37,118 @@ responses all follow.
 
 | Area | What you get |
 | --- | --- |
-| **Dashboard** (`/`) | Next-action card, configurable goal cards, quick actions, training card with previous-session comparison, body/weight card with chart, 7-day summary, notes. |
-| **Goals** (`/goals`) | Add, edit, pause, reorder, archive. Toggle dashboard visibility and checklist membership per goal. Types: numeric, duration, boolean, count. Periods: daily, weekly, monthly, one-time. |
-| **Food** (`/food`) | Log entries by meal, edit/duplicate/delete, reusable foods, meal templates. Daily totals are always recomputed from entries. Calories are required; macros are optional. |
-| **Body** (`/body`) | Weight history with 7-day average and trend, sleep log, water log with quick-add. |
-| **Training** (`/training`) | Workouts, exercises, sets (reps / weight / RPE / done), workout templates, previous performance per exercise. |
-| **History** (`/history`) | 7/30/90-day table and charts. |
-| **Weekly review** (`/review`) | Averages, goal adherence, streaks, strongest consistency, biggest miss, what deserves attention, notes. |
-| **Monitor mode** (`/monitor`) | Full-screen second-monitor view: large clock, next action, goal progress, workout status, weight, weekly trend. Refreshes every 60 s. |
-| **Settings** (`/settings`) | Profile (height, starting/target weight, timezone, units), dashboard section visibility, theme, data export/import/delete. |
-| **Quick entry** | `Ctrl`/`Cmd` + `K` anywhere: `+500 ml water`, `+25 g protein`, `log 450 kcal lunch`, `weigh 50.4 kg`, `slept 7.5h`, `workout complete`, `note ...`. |
-| **MCP** (`/api/mcp`) | 17 scoped tools — 7 read, 10 write — behind bearer-token auth, with an audit trail for every mutation. |
+| **Dashboard** (`/`) | The single next action (a block happening now, an overdue task, a bill due, an application step, then goals), configurable goal cards, today's plan, open tasks, quick actions, training, body, money, career, 7-day summary, notes. |
+| **Goals** (`/goals`) | Add, edit, pause, reorder, archive. Types: numeric, duration, boolean, count. Periods: daily, weekly, monthly, one-time. Metric sources include tracked time (per category), tasks completed, applications sent, spend (per category or all) and income. |
+| **Plan** (`/plan`) | A day as time blocks. Routines (gym 07:00 on mon/wed/fri…) become blocks with "Plan my day"; one-off blocks are added by hand or by voice. |
+| **Tasks** (`/tasks`) | To-dos with area, due date and priority, grouped overdue / today / upcoming / no date / done. |
+| **Time** (`/time`) | One running timer at a time, finished sessions by category, per-area totals, a weekly trend. Sessions feed "time tracked" goals. |
+| **Career** (`/career`) | Applications by stage (wishlist → applied → screening → interview → offer / rejected) with next steps and dates; prep time this week. |
+| **Money** (`/money`) | Manual ledger: expenses by category, income, accounts (bank, cash, wallet, credit card with limit and due day), bills and pending payments; spend today / week / month. Balances update with every entry. |
+| **Food / Training / Body / History / Review** | Unchanged from the fitness core: food log with reusable foods and meal templates, workouts with sets and templates, weight/sleep/water, history charts, weekly review. |
+| **Monitor mode** (`/monitor`) | Second-screen view: large clock, next action, goal progress, plan, tasks, money, training, weight, weekly trend. Refreshes every minute. |
+| **Assistant** | `Ctrl`/`Cmd` + `K`: type or dictate. Recognised quick commands (`+500 ml water`, `weigh 50.4 kg`) run instantly with no model; anything else goes to the assistant, which calls the same tools and answers in a sentence. Destructive requests ask for confirmation. |
+| **MCP** (`/api/mcp`) | 42 narrowly scoped tools behind bearer-token auth, with an audit row per mutation. |
 
 ## Stack
 
-- **Next.js 16** (App Router, React 19, server actions)
-- **TypeScript** (strict; no `any` in application code)
-- **Tailwind CSS v4** + **shadcn/ui** (Radix primitives)
-- **PostgreSQL** + **Drizzle ORM** (`postgres.js` driver)
-- **@modelcontextprotocol/server** + **mcp-handler** for the MCP endpoint
-- **Vitest** for tests
-- Charts are hand-written SVG — no charting dependency
+- **Next.js 16** (App Router, React 19, server actions) · **TypeScript** strict, no `any`
+- **Tailwind CSS v4** + **shadcn/ui** (Radix); Instrument Serif for headlines, Geist for everything else
+- **PostgreSQL** + **Drizzle ORM** (`postgres.js`)
+- **Gemini** through its OpenAI-compatible endpoint, via the `openai` SDK (any OpenAI-compatible provider works)
+- **@modelcontextprotocol/server** + **mcp-handler** for MCP
+- **Web Speech API** for dictation (no extension, no server audio)
+- **Vitest**
 
 ---
 
 ## Local setup
 
-**Prerequisites:** Node 20+ (developed on 24) and a PostgreSQL 14+ database.
+**Prerequisites:** Node 20+ (developed on 24) and Docker, or any PostgreSQL 14+.
 
 ```bash
 git clone <your-repo> life-dashboard && cd life-dashboard
 npm install
-```
-
-Start a local database (a `docker-compose.yml` is included):
-
-```bash
-npm run db:up
-```
-
-That starts the `life-dashboard-db` container on port **5433**, creating it the first time.
-`npm run db:down` stops it. **The container does not survive a reboot** — if the app suddenly
-cannot load any page, run `npm run db:up` again; your data is on a volume and is not lost.
-
-Create your environment file:
-
-```bash
-cp .env.example .env.local
-```
-
-Fill in `.env.local` (see the next section), then create the schema and start the app:
-
-```bash
+cp .env.example .env.local     # then fill it in (see below)
+npm run db:up                  # local Postgres in Docker, port 5433
 npm run db:migrate
 npm run dev
 ```
 
-Open <http://localhost:3000>, sign in with `AUTH_USERNAME` / `AUTH_PASSWORD`. The owner account
-row is created automatically on first sign-in.
+Open <http://localhost:3000> and sign in with `AUTH_USERNAME` / `AUTH_PASSWORD`. The owner account
+is created automatically on first sign-in.
 
-Optionally load development sample data:
-
-```bash
-npm run db:seed
-```
+Optional, development only: `npm run db:seed` loads sample goals, food, a workout, tasks, time,
+routines, applications and money so every page has something to show. Rows it writes are tagged
+`source: "seed"` and refuse to load in production.
 
 ## Environment variables
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `DATABASE_URL` | yes | PostgreSQL connection string. In production use the **pooled** URL. |
-| `AUTH_USERNAME` | no (default `owner`) | The single account that owns all data in this deployment. |
-| `AUTH_PASSWORD` | yes | Password for `/login`. Minimum 8 characters — use something long. |
+| `AUTH_USERNAME` | no (default `owner`) | The single account that owns all data. |
+| `AUTH_PASSWORD` | yes | Password for `/login`. Minimum 8 characters — make it long. |
 | `AUTH_SECRET` | yes | HMAC key for the session cookie. Minimum 32 characters. `openssl rand -base64 48` |
-| `MCP_TOKEN` | no | Bearer token for `/api/mcp`. **Leave unset to disable the MCP endpoint entirely.** Minimum 24 characters. `openssl rand -hex 32` |
-
-Generate secrets:
-
-```bash
-openssl rand -base64 48   # AUTH_SECRET
-openssl rand -hex 32      # MCP_TOKEN
-```
+| `MCP_TOKEN` | no | Bearer token for `/api/mcp`. **Unset = MCP endpoint disabled.** `openssl rand -hex 32` |
+| `ASSISTANT_API_KEY` | no | API key for the assistant's model. **Unset = assistant hidden** (quick commands still work). Default provider is Gemini: get a key at <https://aistudio.google.com/apikey>. |
+| `ASSISTANT_BASE_URL` | no | Any OpenAI-compatible chat endpoint. Defaults to Gemini's (`https://generativelanguage.googleapis.com/v1beta/openai/`). |
+| `ASSISTANT_MODEL` | no | Model id. Defaults to `gemini-3.8-flash`. |
 
 The app validates these at startup and fails with a readable message if any are missing or too
-short. `.env.local` is git-ignored; `.env.example` is committed and contains no real values.
+short. `.env.local` is git-ignored.
+
+## The assistant (voice and text)
+
+Press `Ctrl`/`Cmd` + `K` anywhere (or `Ctrl`/`Cmd` + `Shift` + `K` to open already listening; the
+mic button in the header does the same). Then type or speak:
+
+- `+500 ml water`, `+25 g protein`, `log 450 kcal lunch`, `weigh 50.4 kg`, `slept 7.5h` — recognised
+  locally and logged instantly, no model involved.
+- Anything else — "start a study timer", "add task update resume by Friday", "I spent 250 on
+  lunch", "move Acme to interview", "plan my day", "what did I eat today" — goes to the model,
+  which calls the app's tools and replies in one sentence. What it did is listed under the reply.
+- Removing or archiving things comes back as a card: **Confirm** or **Cancel** (typing or saying
+  "yes" / "no" works too). Nothing destructive runs without that.
+
+Design notes worth knowing:
+
+- A request that only *writes* costs exactly **one** model call — the reply is built from the tool
+  results. Questions (reads) take two. Free-tier quotas go a long way.
+- The model never sees a UUID it has to reproduce: tasks, applications, bills and accounts are
+  matched loosely by name, and ambiguity is a clear error ("Ambiguous task 'email': Email Alice,
+  Email Bob").
+- Life areas and expense categories are closed lists, which small models get right far more often
+  than free text.
+- Replies can be read aloud (speaker toggle in the box; remembered per device).
+- Every write the assistant makes is tagged `source: "assistant"` and audited with its channel.
+
+Test a key from the terminal without the browser:
+
+```bash
+npm run assistant:smoke -- "log 500 ml water"
+```
+
+Speech recognition uses the browser's Web Speech API: Chrome, Edge and Safari (desktop and phone).
+Firefox has none, so the mic is hidden there and typing works identically.
+
+Provider swap: the runner speaks the OpenAI chat-completions dialect, so OpenAI, Groq, OpenRouter or
+a local router such as OmniRoute work by changing `ASSISTANT_BASE_URL` / `ASSISTANT_MODEL`. Note that
+Google may use free-tier prompts for training; use a paid key or another provider if that matters.
+
+## Using it on a phone
+
+The same deployment is a PWA. Open it in Chrome (Android) or Safari (iOS) and choose **Add to
+Home Screen** — it installs as a standalone app. Phones get a five-tab bar (Today, Plan, Tasks,
+Money, More), a floating microphone button in thumb reach, and the assistant box as a bottom sheet.
+The **More** tab (Settings) lists every page. Dictation on iOS needs a tap per utterance
+(tap to start, speak, tap to stop or just pause).
 
 ## Database and migrations
 
 Migrations are plain SQL files in `drizzle/`, generated from `src/db/schema.ts`.
 
 ```bash
-npm run db:up         # start the local Postgres container
+npm run db:up         # start the local Postgres container (needed before dev)
 npm run db:down       # stop it
 npm run db:generate   # after editing the schema — writes a new migration
 npm run db:migrate    # apply pending migrations
@@ -130,21 +156,21 @@ npm run db:studio     # browse the data in Drizzle Studio
 npm run db:reset      # DEV ONLY: drop everything and re-migrate
 ```
 
-Run `npm run db:migrate` once against your production database after the first deploy and after
-any schema change.
+The container does not survive a reboot: if every page suddenly errors, `npm run db:up`. Data is on
+a volume and is not lost.
 
 ## Development commands
 
 ```bash
-npm run db:up        # start the local database (needed before dev)
-npm run dev          # dev server on http://localhost:3000
-npm run build        # production build
-npm run start        # run the production build
-npm run lint         # ESLint
-npm run typecheck    # route typegen + tsc --noEmit
-npm test             # Vitest (single run)
-npm run test:watch   # Vitest in watch mode
-npm run db:seed      # development-only sample data
+npm run dev            # dev server on http://localhost:3000
+npm run build          # production build (needs no env vars)
+npm run start          # run the production build
+npm run lint           # ESLint
+npm run typecheck      # route typegen + tsc --noEmit
+npm test               # Vitest (single run)
+npm run test:watch
+npm run db:seed        # development-only sample data
+npm run assistant:smoke -- "…"   # one assistant request from the terminal
 ```
 
 ## Tests
@@ -153,270 +179,163 @@ npm run db:seed      # development-only sample data
 npm test
 ```
 
-Covered:
+Pure logic (no database): dates and timezones, goal maths and statuses, the metric registry and
+parameterised metrics, food totals, weekly aggregation, the next-action policy (blocks → overdue
+tasks → bills → application steps → goals), quick-entry parsing, plan helpers (weekday masks,
+current/next block), validation, the tool registry contract (every schema converts to a function
+declaration; the destructive set is exactly what it should be), and the assistant runner with a
+scripted model (one call for writes, retry-once on malformed output, pending on destructive, 429
+surfaced).
 
-- date/timezone bucketing, week and month boundaries (`tests/date.test.ts`)
-- goal progress, percentages, statuses, period windows, checklist completion (`tests/goals.test.ts`)
-- the metric registry and metric resolution (`tests/metrics.test.ts`)
-- food totals (`tests/nutrition.test.ts`)
-- weight statistics, weekly aggregation, adherence, streaks, highlights (`tests/aggregate.test.ts`)
-- next-action selection (`tests/next-action.test.ts`)
-- quick-entry parsing (`tests/quick-entry.test.ts`)
-- MCP input validation (`tests/mcp-schemas.test.ts`)
-- MCP read and write tools, bearer-token verification, and **user isolation** (`tests/mcp-tools.test.ts`)
-- daily aggregation straight from event rows (`tests/day-facts.test.ts`)
-- credential checking and session-token signing (`tests/auth.test.ts`)
-- error descriptions, including unreachable-database detection (`tests/errors.test.ts`)
-
-The last three suites need a database and use `DATABASE_URL` from `.env.local`. They create their
-own temporary users and delete them afterwards, so they never touch your own data. Without
-`DATABASE_URL` they are skipped and the pure-logic suites still run.
+Database-backed (use `DATABASE_URL`; create and delete their own users): daily aggregation from event
+rows across timezones, every tool family (fitness, tasks/time, career/plan, money) including
+cross-user isolation, balance consistency on delete, idempotent day planning, monthly bill roll-over.
 
 ## Deploying to Vercel
 
-1. Push the repository to GitHub and import it in Vercel (framework preset: Next.js — no
-   overrides needed).
-2. Provision Postgres. **Neon** is the path of least resistance: in your Vercel project go to
-   **Storage → Create Database → Neon** (Vercel's own "Vercel Postgres" was folded into Neon in
-   early 2025, and Neon is now the first-party Marketplace option). It has a free tier, scales to
-   zero, and injects `DATABASE_URL` into the project automatically — so you usually do not have to
-   set that variable by hand. Supabase works too if you want auth/storage later.
-
-   This app is already configured for a pooled/pgBouncer connection (`max: 1`, `prepare: false`
-   in `src/db/index.ts`), so use the **pooled** connection string (the host contains `-pooler`)
-   for `DATABASE_URL`.
-3. Add the environment variables in **Project → Settings → Environment Variables** for
-   *Production* (and *Preview* if you use it):
-
-   | Name | Value |
-   | --- | --- |
-   | `DATABASE_URL` | pooled Postgres connection string (Neon sets this for you) |
-   | `AUTH_USERNAME` | your username (optional, defaults to `owner`) |
-   | `AUTH_PASSWORD` | a long random password |
-   | `AUTH_SECRET` | `openssl rand -base64 48` |
-   | `MCP_TOKEN` | `openssl rand -hex 32` (omit to disable MCP) |
-
-4. Deploy, then apply migrations against the production database from your machine. Migrations
-   are DDL, so prefer the **direct/unpooled** URL here (Neon exposes it as `DATABASE_URL_UNPOOLED`
-   in the Vercel dashboard):
+1. Import the repository in Vercel (framework preset: Next.js).
+2. **Storage → Create Database → Neon.** It injects `DATABASE_URL` (use the pooled URL; the app is
+   configured for pgBouncer with `max: 1`, `prepare: false`).
+3. Add `AUTH_PASSWORD`, `AUTH_SECRET`, and optionally `MCP_TOKEN` and `ASSISTANT_API_KEY` under
+   **Settings → Environment Variables**.
+4. Deploy, then apply migrations from your machine against the **direct/unpooled** URL:
 
    ```bash
    DATABASE_URL="<production-direct-url>" npm run db:migrate
    ```
 
-   The pooled URL also works; the direct one just avoids pooler quirks during schema changes.
+5. If **Deployment Protection** is on, either turn Vercel Authentication off for Production (the app
+   has its own login) or enable *Protection Bypass for Automation* — otherwise MCP clients get a
+   redirect to Vercel SSO instead of a 401/200.
 
-5. Visit your deployment and sign in. If pages error with *"relation ... does not exist"*, step 4
-   has not been run yet. **Do not** run `npm run db:seed` against production — it
-   refuses to run when `NODE_ENV=production` anyway.
+The build itself needs no environment variables; the database client is created on first use.
 
 ## MCP server
 
-### Endpoint
-
-```
-https://<your-deployment>/api/mcp
-```
-
-Locally: `http://localhost:3000/api/mcp`. It speaks streamable HTTP and requires
-`Authorization: Bearer $MCP_TOKEN`. Requests without a valid token get `401` with a
-`WWW-Authenticate` challenge and never reach a tool. If `MCP_TOKEN` is unset, every request is
-rejected.
-
-### Deployment Protection blocks this endpoint
-
-Vercel's **Deployment Protection** (Settings → Deployment Protection) sits in front of the
-deployment and challenges *every* request, including ones carrying a bearer token. If it is on,
-an MCP client gets a `307` to `vercel.com/sso-api` instead of a `401`/`200`, and browsing the app
-anonymously redirects to a Vercel login.
-
-Pick one:
-
-- **Turn Vercel Authentication off** for Production (simplest). The app is still private: it has
-  its own login, and `/api/mcp` still requires `MCP_TOKEN`.
-- **Keep it on** and enable *Protection Bypass for Automation*, then send the generated secret as
-  an `x-vercel-protection-bypass` header alongside the `Authorization` header. Note that this puts
-  a second secret in your MCP client configuration.
-
-### Connecting from Claude Code
+**Endpoint:** `https://<your-deployment>/api/mcp` (locally `http://localhost:3000/api/mcp`),
+streamable HTTP, `Authorization: Bearer $MCP_TOKEN`.
 
 ```bash
 claude mcp add --transport http life-dashboard https://<your-deployment>/api/mcp \
   --header "Authorization: Bearer $MCP_TOKEN"
 ```
 
-Then check it with `/mcp` inside Claude Code. For a local server, use
-`http://localhost:3000/api/mcp`.
-
-### Connecting from another MCP client
-
-Any client that supports remote (streamable HTTP) servers with a static header works. The
-equivalent JSON configuration is:
+Any client that supports remote servers with a static header works:
 
 ```json
-{
-  "mcpServers": {
-    "life-dashboard": {
-      "type": "http",
-      "url": "https://<your-deployment>/api/mcp",
-      "headers": { "Authorization": "Bearer <MCP_TOKEN>" }
-    }
-  }
-}
+{ "mcpServers": { "life-dashboard": { "type": "http", "url": "https://<your-deployment>/api/mcp",
+  "headers": { "Authorization": "Bearer <MCP_TOKEN>" } } } }
 ```
 
-Keep the token out of anything you commit — reference an environment variable where your client
-supports it.
+### Tools (42)
 
-### Tools
+| Family | Read | Write | Destructive (confirmed by the in-app assistant) |
+| --- | --- | --- | --- |
+| Fitness & goals | `get_today`, `get_goals`, `get_goal`, `get_food_log`, `get_workout`, `get_weight_history`, `get_weekly_summary` | `log_food`, `log_water`, `log_weight`, `log_sleep`, `log_workout`, `add_goal`, `update_goal`, `complete_goal`, `add_note` | `remove_goal` |
+| Tasks | `list_tasks` | `add_task`, `complete_task`, `update_task` | `delete_task` |
+| Time | — | `start_timer`, `stop_timer`, `log_time` | — |
+| Career | `list_applications` | `add_application`, `update_application` | `archive_application` |
+| Plan | `get_day_plan` | `plan_day`, `add_block`, `complete_block`, `add_routine` | `remove_routine` |
+| Money | `get_money_summary` | `log_expense`, `log_income`, `add_bill`, `pay_bill`, `set_account` | `delete_transaction` |
 
-**Read** (safe, never modify anything)
+Every tool returns a one-line human summary and the same data as structured JSON. `get_today` is
+the one to start with: goals with progress, today's totals, plan, tasks, timer, money and the next
+action in one call.
 
-| Tool | Arguments | Returns |
-| --- | --- | --- |
-| `get_today` | — | Date, every active goal with current/target/status, day totals, workout, weight, next action |
-| `get_goals` | — | All goals and their full configuration |
-| `get_goal` | `goalId` | One goal plus progress for its current period |
-| `get_food_log` | `date?` | Entries and totals for a day |
-| `get_workout` | `date?` | Workouts with exercises, sets and the previous session per exercise |
-| `get_weight_history` | `startDate`, `endDate` | Weigh-ins plus latest / 7-day average / change |
-| `get_weekly_summary` | `weekStart?` | Averages, workouts, weight trend, per-goal adherence, streaks |
-
-**Write** (modify persistent records; each writes an audit row)
-
-| Tool | Arguments |
-| --- | --- |
-| `log_food` | `foodName`, `calories`, `protein?`, `carbs?`, `fat?`, `quantity?`, `unit?`, `mealType?`, `timestamp?`, `notes?` |
-| `log_water` | `milliliters`, `timestamp?` |
-| `log_weight` | `kilograms`, `timestamp?`, `note?` |
-| `log_sleep` | `startTime`, `endTime`, `quality?`, `note?` |
-| `log_workout` | `workoutName`, `date?`, `notes?`, `completed?` |
-| `add_goal` | `name`, `type`, `period`, `description?`, `unit?`, `targetValue?`, `metricKey?`, `visibleOnDashboard?`, `showInChecklist?` |
-| `update_goal` | `goalId` plus any fields to change |
-| `remove_goal` | `goalId` (archives; past entries are kept) |
-| `complete_goal` | `goalId`, `date?`, `value?` (manual goals only) |
-| `add_note` | `note`, `date?` |
-
-Every tool returns a one-line human summary *and* the same data as structured JSON.
-
-### MCP safety properties
-
-- No SQL, no shell, and no generic "execute" or "write anything" tool exists.
-- All input is validated with Zod using the *same* schemas the web forms use, so malformed dates
-  (`2026-02-30`), impossible numbers (negative calories, 900 kg, `NaN`, `Infinity`) and unknown
-  enum values are rejected before any code runs.
-- The user id comes from the verified token, never from tool arguments — no argument can reach
-  another account's data (there is a test for this).
-- Every mutation appends a row to `mcp_audit_log` with the tool name, the arguments as received,
-  a summary and a timestamp.
-- `complete_goal` refuses metric-backed goals, so a model cannot fake protein progress instead of
-  logging the food.
-- The server's instructions tell the model not to invent macronutrient values and to read current
-  state before ambiguous or destructive changes.
+Safety: no SQL and no generic execute tool; all input is validated with the same Zod schemas the
+web forms use; the user id comes from the verified token, never from arguments; every mutation is
+appended to `mcp_audit_log` with the tool, its arguments, a summary and the channel (`mcp` or
+`assistant`); `complete_goal` refuses metric-backed goals so progress cannot be faked.
 
 ## Monitor mode
 
-`/monitor` is built for a second screen: a large clock, the date, the next action, goal progress,
-workout status, weight and a weekly trend — no navigation. It polls `/api/monitor` once a minute
-and shows a small "Reconnecting…" chip if a poll fails.
-
-- Open it from the dashboard header (the monitor icon), or go to `/monitor` directly.
-- The ⤢ button uses the browser's own Fullscreen API — no extension required.
-- On Linux, drag the window to the second monitor and press `F11` (or use the ⤢ button) for a
-  clean, always-on display. Dark mode is the intended look; light mode works too.
+`/monitor` is built for a second screen: clock, date, next action, goal progress, the current or
+next block, tasks, money spent today and the next bill, training, weight, weekly trend. It polls
+once a minute and uses the browser's Fullscreen API (⤢). Open it from the header or go there
+directly.
 
 ## Troubleshooting
 
-**Every page errors, or sign-in fails.** The database is almost certainly not running — the
-Docker container does not restart automatically after a reboot:
+**Every page errors, or sign-in fails.** The database is not running: `npm run db:up`. The app says
+so explicitly ("Cannot reach the database…").
 
-```bash
-npm run db:up
-```
+**"Invalid environment configuration".** `.env.local` is missing or a value is too short.
 
-The app now reports this explicitly ("Cannot reach the database…") rather than showing a blank
-error. Confirm the connection independently with:
+**A relation does not exist.** Migrations have not been applied: `npm run db:migrate` (on a fresh
+Vercel deployment this is the required second step).
 
-```bash
-docker exec life-dashboard-db pg_isready -U postgres
-```
+**The assistant says it is not configured.** Set `ASSISTANT_API_KEY`. Test with
+`npm run assistant:smoke -- "log 500 ml water"`.
 
-**"Invalid environment configuration" on startup.** `.env.local` is missing or a value is too
-short. Copy `.env.example` and regenerate the secrets with the `openssl` commands above.
+**"Rate-limited right now".** The provider returned 429; wait a minute. Free-tier quotas are per
+minute and per day — check yours in AI Studio.
 
-**A relation does not exist.** Migrations have not been applied: `npm run db:migrate`. On a fresh
-Vercel deployment this is the usual second step — the build succeeds without a database, but the
-running app needs the schema.
+**The Vercel URL 404s.** That domain is not assigned to your project — `*.vercel.app` names are
+global; check the real URL in the Vercel dashboard rather than guessing.
 
 **Port 3000 is taken.** `PORT=3001 npm run dev`.
 
-**The Vercel URL 404s with `x-vercel-error: NOT_FOUND`.** That domain is not assigned to your
-project. `*.vercel.app` subdomains are globally unique, so a plausible-looking name may well
-belong to somebody else's project — check the real URL in the Vercel dashboard (or in the
-deployment status on the GitHub commit) rather than guessing it, and never sign in on a domain you
-have not verified.
-
 ## Security notes
 
-- **This is a single-account app.** `AUTH_USERNAME`/`AUTH_PASSWORD` define the one account;
-  there is no sign-up, and nothing is publicly readable. Every page is behind
-  `src/proxy.ts`, which redirects to `/login` without a session cookie.
-- The session is a `jose`-signed JWT in an `httpOnly`, `sameSite=lax`, `secure`-in-production
-  cookie, valid for 30 days. `AUTH_SECRET` signs it; changing that secret invalidates every
-  session.
-- Credentials and the MCP token are compared with `timingSafeEqual`.
-- Secrets are read only through `src/lib/env.ts`, which imports `server-only` — they can never be
-  bundled into client code.
-- Every query is scoped by `userId`, so the data model is multi-user-safe even though the
-  deployment serves one person.
-- `robots` is set to `noindex, nofollow`.
-- If you rotate `MCP_TOKEN`, update your MCP client configuration; old tokens stop working
-  immediately.
+- Single account defined by env vars; nothing is publicly readable. Every page is behind
+  `src/proxy.ts` (only `/login`, `/api/mcp`, the manifest and icons are exempt).
+- Session: `jose`-signed JWT in an `httpOnly`, `sameSite=lax`, `secure`-in-production cookie, 30
+  days. Credentials and the MCP token are compared with `timingSafeEqual`.
+- Secrets are read only through `src/lib/env.ts` (`server-only`) and never reach client code. The
+  assistant's key is used server-side only; the browser talks to `/api/assistant`, which is
+  session-gated.
+- Every query is scoped by `userId`; the data model is multi-user-safe by construction.
+- `robots: noindex, nofollow`.
 
-## Adding a goal type or metric
+## Adding a metric, area or tool
 
-**A new automatic metric** (progress derived from logged data) is a three-line change:
+**A new automatic metric** (progress derived from logged data):
 
 1. Add the key to `METRIC_KEYS` in `src/lib/domain.ts`.
-2. Add the field it reads to `DayFacts` in `src/lib/metrics.ts` (if it is not already there), and
-   populate it in `loadDayFacts` in `src/server/services/day.ts`.
-3. Add an entry to the `METRICS` registry in `src/lib/metrics.ts` with a label, default unit,
-   suggested goal type, and an aggregation of `sum` or `latest`.
+2. Add the field it reads to `DayFacts` in `src/lib/metrics.ts` and populate it in `loadDayFacts`
+   (`src/server/services/day.ts`).
+3. Add an entry to the `METRICS` registry with a label, default unit, suggested goal type, an
+   aggregation (`sum` or `latest`) and — if it needs one — a `param` (`area` or `expenseCategory`,
+   required or optional). `validateMetricParam` in `src/lib/validation.ts` enforces it everywhere.
 
-The new metric immediately appears in the "Tracked from" dropdown when creating a goal, in the
-dashboard, in the weekly review, and in `add_goal` over MCP. No UI change is needed.
+It appears in the goal form's "Tracked from" list, on the dashboard, in the review and in
+`add_goal` with no UI change.
 
-**A new goal type** (a new way of interpreting a target):
+**A new life area or expense category:** one entry in `AREA_KEYS` / `EXPENSE_CATEGORIES` and its
+label in `src/lib/domain.ts`. Tool schemas, pickers and validation pick it up.
 
-1. Add it to `GOAL_TYPES` in `src/lib/domain.ts`.
-2. If it needs special target handling, extend `effectiveTarget` in `src/lib/goals.ts`
-   (`boolean`, for example, defaults to a target of 1).
-3. If it should behave differently in the "next action" suggestion, add or reorder a strategy in
-   `DEFAULT_STRATEGIES` in `src/lib/next-action.ts`.
-4. Optionally give it a quick-add affordance in `src/components/dashboard/goal-quick-add.tsx`.
+**A new tool** (and therefore a new voice command and MCP tool): add a `defineTool({...})` entry to
+the relevant file in `src/mcp/tools/` — name, title, description (written for a model), a Zod input
+schema from `src/mcp/schemas.ts`, `kind` (`read` | `write` | `destructive`), `run`, and for
+destructive tools a `describe` that phrases the confirmation. Add the list to `TOOLS` in
+`src/mcp/registry.ts`. MCP registration, the model's function declarations, confirmation and audit
+all come from that one definition. Extend `tests/tool-registry.test.ts` counts.
 
-Goal types and periods are stored as text columns validated by Zod, so adding one needs no
-database migration.
+**A new next-action rule:** add a strategy to `DEFAULT_STRATEGIES` in `src/lib/next-action.ts`; the
+order of the list is the priority.
 
 ## Architecture notes
 
 ```
 src/
-  app/            routes: (app) group = authenticated shell, /login, /monitor, /api/*
-  components/     ui/ (shadcn), plus feature folders: dashboard, goals, food, body, workouts, log, charts
-  db/             Drizzle schema and client
-  lib/            pure business logic — no database imports, fully unit-tested
-  mcp/            MCP auth, context, schemas, tools, registration
+  app/            routes: (app) group = authenticated shell, /login, /monitor, /api/{assistant,mcp,monitor,export}
+  assistant/      client (OpenAI-compatible), prompt, context digest, runner, types
+  components/     ui/ (shadcn) + feature folders: assistant, dashboard, goals, food, body, workouts,
+                  tasks, time, plan, career, money, log, charts, layout, settings, monitor
+  db/             Drizzle schema and (lazily created) client
+  lib/            pure business logic — no database imports; fully unit-tested
+  mcp/            registry, tool definitions per family, schemas, auth, audit, MCP server glue
   server/         auth, services (data access + orchestration), server actions
 ```
 
-Three rules keep it coherent:
+Four rules keep it coherent:
 
-1. **Calculations live in `src/lib` and are pure.** `DayFacts` → goal progress → summaries. The
-   database layer produces `DayFacts`; everything downstream is arithmetic. That is why the tests
-   need no mocks.
-2. **Daily totals are never stored.** Every event row carries an absolute `occurredAt` *and* a
-   `localDate` bucket computed in the user's timezone. Totals are recomputed from events in one
-   place (`loadDayFacts`), so the dashboard, the weekly review and MCP can never disagree.
-3. **The web app and MCP share the service layer and the Zod schemas.** A server action and a
-   tool call end up in the same function with the same validation.
+1. **Calculations are pure and live in `src/lib`.** `DayFacts` → goal progress → summaries → next
+   action. The database layer produces `DayFacts`; everything downstream is arithmetic.
+2. **Daily totals are never stored.** Every event row carries an absolute `occurredAt` and a
+   `localDate` bucket in the user's timezone; totals are recomputed in one place (`loadDayFacts`).
+3. **One tool registry, three consumers.** The web actions, the MCP server and the in-app assistant
+   share the services and the Zod schemas; MCP and the assistant share the exact tool definitions.
+4. **Closed vocabularies for anything a model has to name.** Areas, categories, stages and kinds are
+   `as const` lists validated by Zod, stored as text — no migration to extend, and a strict enum in
+   every tool schema.

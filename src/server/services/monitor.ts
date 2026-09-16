@@ -8,7 +8,7 @@ export interface MonitorPayload {
   dateLabel: string;
   timezone: string;
   generatedAt: string;
-  nextAction: { label: string; detail: string | null };
+  nextAction: { label: string; detail: string | null; type: string };
   checklist: { done: number; total: number; fraction: number };
   goals: Array<{
     id: string;
@@ -31,6 +31,19 @@ export interface MonitorPayload {
     averages: { calories: number; protein: number; waterMl: number; sleepHours: number };
     workouts: number;
   };
+  plan: {
+    total: number;
+    done: number;
+    current: { label: string; endTime: string } | null;
+    next: { label: string; startTime: string } | null;
+  };
+  tasks: { open: number; overdue: number; next: string | null };
+  money: {
+    currency: string;
+    spentToday: number;
+    nextBill: { name: string; amount: number; dueDate: string } | null;
+  };
+  timer: { category: string; label: string | null; startedAt: string } | null;
 }
 
 export async function buildMonitorPayload(
@@ -61,7 +74,11 @@ export async function buildMonitorPayload(
     dateLabel: formatLongDate(snapshot.date, timezone),
     timezone,
     generatedAt: new Date().toISOString(),
-    nextAction: { label: snapshot.nextAction.label, detail: snapshot.nextAction.detail },
+    nextAction: {
+      label: snapshot.nextAction.label,
+      detail: snapshot.nextAction.detail,
+      type: snapshot.nextAction.type,
+    },
     checklist: { done, total: checklistGoals.length, fraction: snapshot.checklist },
     goals: dashboardGoals.flatMap((goal) => {
       const progress = snapshot.progressById.get(goal.id);
@@ -106,5 +123,38 @@ export async function buildMonitorPayload(
       },
       workouts: snapshot.week.totals.workouts,
     },
+    plan: {
+      total: snapshot.plan.blocks.length,
+      done: snapshot.plan.blocks.filter((block) => block.done).length,
+      current: snapshot.plan.current
+        ? { label: snapshot.plan.current.label, endTime: snapshot.plan.current.endTime }
+        : null,
+      next: snapshot.plan.next
+        ? { label: snapshot.plan.next.label, startTime: snapshot.plan.next.startTime }
+        : null,
+    },
+    tasks: {
+      open: snapshot.tasks.open,
+      overdue: snapshot.tasks.overdue,
+      next: snapshot.tasks.items[0]?.title ?? null,
+    },
+    money: {
+      currency: snapshot.money.currency,
+      spentToday: snapshot.money.spentToday,
+      nextBill: snapshot.money.bills[0]
+        ? {
+            name: snapshot.money.bills[0].name,
+            amount: snapshot.money.bills[0].amount,
+            dueDate: snapshot.money.bills[0].dueDate,
+          }
+        : null,
+    },
+    timer: snapshot.time.running
+      ? {
+          category: snapshot.time.running.category,
+          label: snapshot.time.running.label,
+          startedAt: snapshot.time.running.startAt.toISOString(),
+        }
+      : null,
   };
 }

@@ -245,6 +245,73 @@ async function main() {
     source: "seed" as const,
   });
 
+  // --- Tasks, time, routines, career, money ---------------------------------
+  // Whole-life sample data; every row is tagged "seed" like the rest.
+  for (const table of [schema.tasks, schema.timeEntries, schema.timeBlocks, schema.applications, schema.transactions, schema.bills]) {
+    await db.delete(table).where(eq(table.source, "seed"));
+  }
+
+  await db.insert(schema.tasks).values([
+    { userId: user.id, title: "Update resume", area: "career" as const, dueDate: addDays(today, -1), priority: "high" as const, source: "seed" as const },
+    { userId: user.id, title: "Send invoice to client", area: "freelance" as const, dueDate: today, priority: "medium" as const, source: "seed" as const },
+    { userId: user.id, title: "Read system design chapter 4", area: "study" as const, dueDate: addDays(today, 3), priority: "low" as const, source: "seed" as const },
+  ]);
+
+  await db.insert(schema.timeEntries).values(
+    [
+      { category: "study" as const, label: "DSA practice", minutes: 45, offsetHours: 6 },
+      { category: "freelance" as const, label: "Client dashboard", minutes: 120, offsetHours: 3 },
+    ].map((entry) => {
+      const endAt = new Date(now.getTime() - entry.offsetHours * 3_600_000);
+      return {
+        userId: user.id,
+        category: entry.category,
+        label: entry.label,
+        startAt: new Date(endAt.getTime() - entry.minutes * 60_000),
+        endAt,
+        durationMinutes: entry.minutes,
+        localDate: today,
+        source: "seed" as const,
+      };
+    }),
+  );
+
+  const existingRoutines = await db.query.routines.findMany({ where: eq(schema.routines.userId, user.id) });
+  if (existingRoutines.length === 0) {
+    await db.insert(schema.routines).values([
+      { userId: user.id, label: "Gym", kind: "workout" as const, area: "fitness" as const, startTime: "07:00", endTime: "08:00", weekdays: 1 | 4 | 16 },
+      { userId: user.id, label: "Deep work", kind: "routine" as const, area: "work" as const, startTime: "10:00", endTime: "12:00", weekdays: 31 },
+      { userId: user.id, label: "Study", kind: "study" as const, area: "study" as const, startTime: "20:00", endTime: "21:00", weekdays: 127 },
+    ]);
+  }
+
+  await db.insert(schema.applications).values([
+    { userId: user.id, company: "Acme", role: "Senior Engineer", stage: "interview" as const, nextStep: "System design round", nextStepDate: addDays(today, 2), appliedOn: addDays(today, -10), source: "seed" as const },
+    { userId: user.id, company: "Globex", role: "Staff Engineer", stage: "applied" as const, appliedOn: addDays(today, -3), source: "seed" as const },
+    { userId: user.id, company: "Initech", role: "Tech Lead", stage: "wishlist" as const, source: "seed" as const },
+  ]);
+
+  const [bank] = await db
+    .insert(schema.moneyAccounts)
+    .values({ userId: user.id, name: "Salary account", kind: "bank" as const, balance: 42000 })
+    .onConflictDoUpdate({ target: [schema.moneyAccounts.userId, schema.moneyAccounts.name], set: { balance: 42000 } })
+    .returning();
+  await db
+    .insert(schema.moneyAccounts)
+    .values({ userId: user.id, name: "Credit card", kind: "credit_card" as const, balance: 3200, creditLimit: 100000, dueDay: 15 })
+    .onConflictDoUpdate({ target: [schema.moneyAccounts.userId, schema.moneyAccounts.name], set: { balance: 3200 } });
+
+  await db.insert(schema.transactions).values([
+    { userId: user.id, accountId: bank.id, amount: 250, kind: "expense" as const, category: "food" as const, label: "Lunch", occurredAt: new Date(now.getTime() - 4 * 3_600_000), localDate: today, source: "seed" as const },
+    { userId: user.id, accountId: bank.id, amount: 80, kind: "expense" as const, category: "transport" as const, label: "Auto", occurredAt: new Date(now.getTime() - 9 * 3_600_000), localDate: today, source: "seed" as const },
+    { userId: user.id, accountId: bank.id, amount: 1499, kind: "expense" as const, category: "subscriptions" as const, label: "Course", occurredAt: new Date(`${addDays(today, -2)}T10:00:00Z`), localDate: addDays(today, -2), source: "seed" as const },
+  ]);
+
+  await db.insert(schema.bills).values([
+    { userId: user.id, name: "Electricity", amount: 1800, dueDate: addDays(today, 4), recurrence: "monthly" as const, accountId: bank.id, source: "seed" as const },
+    { userId: user.id, name: "Rent", amount: 18000, dueDate: addDays(today, 12), recurrence: "monthly" as const, accountId: bank.id, category: "rent" as const, source: "seed" as const },
+  ]);
+
   await sql.end();
   console.log(`Seeded development data for "${username}" (timezone ${timezone}).`);
 }

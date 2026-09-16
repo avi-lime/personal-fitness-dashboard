@@ -77,6 +77,58 @@ export async function getToday(ctx: McpContext) {
       type: snapshot.nextAction.type,
       goalId: snapshot.nextAction.goalId,
       label: snapshot.nextAction.label,
+      detail: snapshot.nextAction.detail,
+    },
+    tasks: {
+      open: snapshot.tasks.open,
+      overdue: snapshot.tasks.overdue,
+      dueToday: snapshot.tasks.dueToday,
+      next: snapshot.tasks.items.slice(0, 5).map((task) => ({
+        id: task.id,
+        title: task.title,
+        dueDate: task.dueDate,
+        priority: task.priority,
+      })),
+    },
+    plan: {
+      now: snapshot.plan.now,
+      blocks: snapshot.plan.blocks.map((block) => ({
+        id: block.id,
+        startTime: block.startTime,
+        endTime: block.endTime,
+        label: block.label,
+        done: block.done,
+      })),
+      current: snapshot.plan.current?.label ?? null,
+      next: snapshot.plan.next?.label ?? null,
+    },
+    timer: snapshot.time.running
+      ? {
+          category: snapshot.time.running.category,
+          label: snapshot.time.running.label,
+          startedAt: snapshot.time.running.startAt.toISOString(),
+        }
+      : null,
+    timeTodayMinutes: snapshot.time.minutesByCategory,
+    money: {
+      currency: snapshot.money.currency,
+      spentToday: snapshot.money.spentToday,
+      spentThisWeek: snapshot.money.spentThisWeek,
+      billsDueSoon: snapshot.money.bills.slice(0, 5).map((bill) => ({
+        id: bill.id,
+        name: bill.name,
+        amount: bill.amount,
+        dueDate: bill.dueDate,
+      })),
+    },
+    career: {
+      active: snapshot.career.active.length,
+      nextStepsDue: snapshot.career.nextStepsDue.map((app) => ({
+        id: app.id,
+        company: app.company,
+        nextStep: app.nextStep,
+        nextStepDate: app.nextStepDate,
+      })),
     },
   };
 }

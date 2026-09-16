@@ -3,15 +3,23 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
+  applications,
+  bills,
   foodLogs,
   foods,
   goalEntries,
   goals,
   mealTemplateItems,
   mealTemplates,
+  moneyAccounts,
   notes,
   profiles,
+  routines,
   sleepEntries,
+  tasks,
+  timeBlocks,
+  timeEntries,
+  transactions,
   waterLogs,
   weightEntries,
   workoutExercises,
@@ -23,7 +31,7 @@ import {
 import { getHistory } from "./summary";
 import { addDays, toLocalDate, type LocalDate } from "@/lib/date";
 
-export const EXPORT_VERSION = 1;
+export const EXPORT_VERSION = 2;
 
 /** A complete, portable copy of one user's data. */
 export interface ExportBundle {
@@ -41,6 +49,14 @@ export interface ExportBundle {
   workouts: unknown[];
   workoutTemplates: unknown[];
   notes: unknown[];
+  tasks: unknown[];
+  timeEntries: unknown[];
+  applications: unknown[];
+  routines: unknown[];
+  timeBlocks: unknown[];
+  moneyAccounts: unknown[];
+  transactions: unknown[];
+  bills: unknown[];
 }
 
 export async function exportData(userId: string): Promise<ExportBundle> {
@@ -57,6 +73,14 @@ export async function exportData(userId: string): Promise<ExportBundle> {
     workoutRows,
     workoutTemplateRows,
     noteRows,
+    taskRows,
+    timeRows,
+    applicationRows,
+    routineRows,
+    blockRows,
+    accountRows,
+    transactionRows,
+    billRows,
   ] = await Promise.all([
     db.query.profiles.findFirst({ where: eq(profiles.userId, userId) }),
     db.select().from(goals).where(eq(goals.userId, userId)),
@@ -79,6 +103,14 @@ export async function exportData(userId: string): Promise<ExportBundle> {
       with: { exercises: true },
     }),
     db.select().from(notes).where(eq(notes.userId, userId)),
+    db.select().from(tasks).where(eq(tasks.userId, userId)),
+    db.select().from(timeEntries).where(eq(timeEntries.userId, userId)),
+    db.select().from(applications).where(eq(applications.userId, userId)),
+    db.select().from(routines).where(eq(routines.userId, userId)),
+    db.select().from(timeBlocks).where(eq(timeBlocks.userId, userId)),
+    db.select().from(moneyAccounts).where(eq(moneyAccounts.userId, userId)),
+    db.select().from(transactions).where(eq(transactions.userId, userId)),
+    db.select().from(bills).where(eq(bills.userId, userId)),
   ]);
 
   return {
@@ -96,6 +128,14 @@ export async function exportData(userId: string): Promise<ExportBundle> {
     workouts: workoutRows,
     workoutTemplates: workoutTemplateRows,
     notes: noteRows,
+    tasks: taskRows,
+    timeEntries: timeRows,
+    applications: applicationRows,
+    routines: routineRows,
+    timeBlocks: blockRows,
+    moneyAccounts: accountRows,
+    transactions: transactionRows,
+    bills: billRows,
   };
 }
 
@@ -156,6 +196,13 @@ const importSchema = z.object({
   weightEntries: z.array(z.record(z.string(), z.unknown())).default([]),
   sleepEntries: z.array(z.record(z.string(), z.unknown())).default([]),
   notes: z.array(z.record(z.string(), z.unknown())).default([]),
+  tasks: z.array(z.record(z.string(), z.unknown())).default([]),
+  timeEntries: z.array(z.record(z.string(), z.unknown())).default([]),
+  applications: z.array(z.record(z.string(), z.unknown())).default([]),
+  routines: z.array(z.record(z.string(), z.unknown())).default([]),
+  moneyAccounts: z.array(z.record(z.string(), z.unknown())).default([]),
+  transactions: z.array(z.record(z.string(), z.unknown())).default([]),
+  bills: z.array(z.record(z.string(), z.unknown())).default([]),
 });
 
 export interface ImportReport {
@@ -165,6 +212,12 @@ export interface ImportReport {
   weightEntries: number;
   sleepEntries: number;
   notes: number;
+  tasks: number;
+  timeEntries: number;
+  applications: number;
+  routines: number;
+  transactions: number;
+  bills: number;
 }
 
 type Row = Record<string, unknown>;
@@ -189,6 +242,12 @@ export async function importData(userId: string, payload: unknown): Promise<Impo
     weightEntries: 0,
     sleepEntries: 0,
     notes: 0,
+    tasks: 0,
+    timeEntries: 0,
+    applications: 0,
+    routines: 0,
+    transactions: 0,
+    bills: 0,
   };
 
   await db.transaction(async (tx) => {
@@ -325,6 +384,144 @@ export async function importData(userId: string, payload: unknown): Promise<Impo
       await tx.insert(notes).values({ userId, body, localDate });
       report.notes += 1;
     }
+
+    for (const row of bundle.tasks) {
+      const title = str(row, "title");
+      if (!title) continue;
+      await tx.insert(tasks).values({
+        userId,
+        title,
+        area: str(row, "area") as never,
+        dueDate: str(row, "dueDate"),
+        priority: (str(row, "priority") ?? "medium") as never,
+        status: (str(row, "status") ?? "todo") as never,
+        completedAt: date(row, "completedAt"),
+        completedOn: str(row, "completedOn"),
+        notes: str(row, "notes"),
+      });
+      report.tasks += 1;
+    }
+
+    for (const row of bundle.timeEntries) {
+      const category = str(row, "category");
+      const startAt = date(row, "startAt");
+      const localDate = str(row, "localDate");
+      if (!category || !startAt || !localDate) continue;
+      await tx.insert(timeEntries).values({
+        userId,
+        category: category as never,
+        label: str(row, "label"),
+        startAt,
+        endAt: date(row, "endAt"),
+        durationMinutes: num(row, "durationMinutes"),
+        localDate,
+        notes: str(row, "notes"),
+      });
+      report.timeEntries += 1;
+    }
+
+    for (const row of bundle.applications) {
+      const company = str(row, "company");
+      const role = str(row, "role");
+      if (!company || !role) continue;
+      await tx.insert(applications).values({
+        userId,
+        company,
+        role,
+        stage: (str(row, "stage") ?? "wishlist") as never,
+        url: str(row, "url"),
+        location: str(row, "location"),
+        salaryNote: str(row, "salaryNote"),
+        nextStep: str(row, "nextStep"),
+        nextStepDate: str(row, "nextStepDate"),
+        appliedOn: str(row, "appliedOn"),
+        notes: str(row, "notes"),
+        archivedAt: date(row, "archivedAt"),
+      });
+      report.applications += 1;
+    }
+
+    for (const row of bundle.routines) {
+      const label = str(row, "label");
+      const startTime = str(row, "startTime");
+      const endTime = str(row, "endTime");
+      const weekdays = num(row, "weekdays");
+      if (!label || !startTime || !endTime || weekdays === null) continue;
+      await tx.insert(routines).values({
+        userId,
+        label,
+        kind: (str(row, "kind") ?? "routine") as never,
+        area: str(row, "area") as never,
+        startTime,
+        endTime,
+        weekdays: Math.round(weekdays),
+        active: row.active !== false,
+      });
+      report.routines += 1;
+    }
+
+    const accountIdMap = new Map<string, string>();
+    for (const row of bundle.moneyAccounts) {
+      const name = str(row, "name");
+      if (!name) continue;
+      const [created] = await tx
+        .insert(moneyAccounts)
+        .values({
+          userId,
+          name,
+          kind: (str(row, "kind") ?? "bank") as never,
+          balance: num(row, "balance") ?? 0,
+          creditLimit: num(row, "creditLimit"),
+          statementDay: num(row, "statementDay"),
+          dueDay: num(row, "dueDay"),
+          currency: str(row, "currency") ?? "INR",
+        })
+        .onConflictDoUpdate({
+          target: [moneyAccounts.userId, moneyAccounts.name],
+          set: { balance: num(row, "balance") ?? 0 },
+        })
+        .returning({ id: moneyAccounts.id });
+      const originalId = str(row, "id");
+      if (originalId) accountIdMap.set(originalId, created.id);
+    }
+
+    // Balances are imported as stated above; transactions are history only.
+    for (const row of bundle.transactions) {
+      const amount = num(row, "amount");
+      const localDate = str(row, "localDate");
+      if (amount === null || !localDate) continue;
+      const originalAccount = str(row, "accountId");
+      await tx.insert(transactions).values({
+        userId,
+        accountId: originalAccount ? (accountIdMap.get(originalAccount) ?? null) : null,
+        amount,
+        kind: (str(row, "kind") ?? "expense") as never,
+        category: (str(row, "category") ?? "other") as never,
+        label: str(row, "label"),
+        occurredAt: date(row, "occurredAt") ?? new Date(`${localDate}T12:00:00Z`),
+        localDate,
+        notes: str(row, "notes"),
+      });
+      report.transactions += 1;
+    }
+
+    for (const row of bundle.bills) {
+      const name = str(row, "name");
+      const amount = num(row, "amount");
+      const dueDate = str(row, "dueDate");
+      if (!name || amount === null || !dueDate) continue;
+      await tx.insert(bills).values({
+        userId,
+        name,
+        amount,
+        dueDate,
+        recurrence: (str(row, "recurrence") ?? "none") as never,
+        category: (str(row, "category") ?? "bills") as never,
+        status: (str(row, "status") ?? "pending") as never,
+        notes: str(row, "notes"),
+      });
+      report.bills += 1;
+    }
   });
 
   return report;
@@ -364,6 +561,14 @@ export async function deleteAllData(userId: string): Promise<void> {
         .where(eq(workoutTemplateExercises.templateId, id));
     }
 
+    await tx.delete(timeBlocks).where(eq(timeBlocks.userId, userId));
+    await tx.delete(routines).where(eq(routines.userId, userId));
+    await tx.delete(tasks).where(eq(tasks.userId, userId));
+    await tx.delete(timeEntries).where(eq(timeEntries.userId, userId));
+    await tx.delete(applications).where(eq(applications.userId, userId));
+    await tx.delete(bills).where(eq(bills.userId, userId));
+    await tx.delete(transactions).where(eq(transactions.userId, userId));
+    await tx.delete(moneyAccounts).where(eq(moneyAccounts.userId, userId));
     await tx.delete(workouts).where(eq(workouts.userId, userId));
     await tx.delete(workoutTemplates).where(eq(workoutTemplates.userId, userId));
     await tx.delete(mealTemplates).where(eq(mealTemplates.userId, userId));

@@ -10,9 +10,13 @@ import { DASHBOARD_SECTIONS, type DashboardSection, type DashboardSectionVisibil
 const LABELS: Record<DashboardSection, string> = {
   nextAction: "Next action",
   today: "Today's goals",
+  plan: "Today's plan",
+  tasks: "Tasks",
   quickActions: "Quick actions",
   training: "Training",
   body: "Body & weight",
+  money: "Money",
+  career: "Career",
   weekly: "Last 7 days",
   notes: "Notes",
 };

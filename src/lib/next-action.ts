@@ -1,20 +1,38 @@
 import type { GoalLike, GoalProgress } from "./goals";
-import { formatValue } from "./format";
+import { formatMoney, formatValue } from "./format";
+import { addDays, type LocalDate } from "./date";
+import { minutesOf } from "./plan";
 
 /**
  * The single "what should I do next?" suggestion shown on the dashboard and in
  * monitor mode.
  */
 export interface NextAction {
-  type: "goal" | "idle";
+  type: "goal" | "task" | "bill" | "block" | "application" | "idle";
   goalId: string | null;
   label: string;
   detail: string | null;
+  /** Where acting on it happens. */
+  href?: string;
 }
 
 export interface NextActionInput {
   goals: GoalLike[];
   progressById: Map<string, GoalProgress>;
+  today?: LocalDate;
+  /** HH:MM in the user's timezone. */
+  nowTime?: string;
+  tasks?: Array<{ id: string; title: string; dueDate: string | null; priority: string }>;
+  bills?: Array<{ id: string; name: string; amount: number; dueDate: string }>;
+  currency?: string;
+  blocks?: Array<{ id: string; label: string; startTime: string; endTime: string; done: boolean }>;
+  applications?: Array<{
+    id: string;
+    company: string;
+    role: string;
+    nextStep: string | null;
+    nextStepDate: string | null;
+  }>;
 }
 
 /**
@@ -23,6 +41,81 @@ export interface NextActionInput {
  * it (or add to it) without touching any call site.
  */
 export type NextActionStrategy = (input: NextActionInput) => NextAction | null;
+
+/** A planned block is happening right now and is not done yet. */
+const currentBlock: NextActionStrategy = ({ blocks, nowTime }) => {
+  if (!blocks || !nowTime) return null;
+  const block = blocks.find((b) => !b.done && b.startTime <= nowTime && nowTime < b.endTime);
+  if (!block) return null;
+  return {
+    type: "block",
+    goalId: null,
+    label: block.label,
+    detail: `Now · until ${block.endTime}`,
+    href: "/plan",
+  };
+};
+
+const overdueTask: NextActionStrategy = ({ tasks, today }) => {
+  if (!tasks || !today) return null;
+  const overdue = tasks
+    .filter((task) => task.dueDate !== null && task.dueDate < today)
+    .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""))[0];
+  if (!overdue) return null;
+  return {
+    type: "task",
+    goalId: null,
+    label: overdue.title,
+    detail: `Overdue since ${overdue.dueDate}`,
+    href: "/tasks",
+  };
+};
+
+const billDueSoon: NextActionStrategy = ({ bills, today, currency }) => {
+  if (!bills || !today) return null;
+  const horizon = addDays(today, 2);
+  const due = bills.filter((bill) => bill.dueDate <= horizon).sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+  if (!due) return null;
+  const when = due.dueDate < today ? "overdue" : due.dueDate === today ? "due today" : `due ${due.dueDate}`;
+  return {
+    type: "bill",
+    goalId: null,
+    label: `Pay ${due.name}`,
+    detail: `${formatMoney(due.amount, currency ?? "INR")} · ${when}`,
+    href: "/money",
+  };
+};
+
+const applicationStepDue: NextActionStrategy = ({ applications, today }) => {
+  if (!applications || !today) return null;
+  const due = applications
+    .filter((app) => app.nextStep && app.nextStepDate !== null && app.nextStepDate <= today)
+    .sort((a, b) => (a.nextStepDate ?? "").localeCompare(b.nextStepDate ?? ""))[0];
+  if (!due) return null;
+  return {
+    type: "application",
+    goalId: null,
+    label: due.nextStep ?? "Next step",
+    detail: `${due.company} · ${due.role}`,
+    href: "/career",
+  };
+};
+
+/** Something planned starts within the hour. */
+const upcomingBlock: NextActionStrategy = ({ blocks, nowTime }) => {
+  if (!blocks || !nowTime) return null;
+  const soon = blocks
+    .filter((b) => !b.done && b.startTime > nowTime && minutesOf(b.startTime) - minutesOf(nowTime) <= 60)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
+  if (!soon) return null;
+  return {
+    type: "block",
+    goalId: null,
+    label: soon.label,
+    detail: `Up next at ${soon.startTime}`,
+    href: "/plan",
+  };
+};
 
 /** Not-yet-started boolean/count goals read as discrete actions: "do this". */
 const discreteGoal: NextActionStrategy = ({ goals, progressById }) => {
@@ -74,7 +167,17 @@ const allClear: NextActionStrategy = ({ goals }) => ({
   detail: goals.length === 0 ? "Goals drive the whole dashboard" : "Nothing outstanding today",
 });
 
-export const DEFAULT_STRATEGIES: NextActionStrategy[] = [discreteGoal, largestGap, allClear];
+/** Time-bound things first, then goals. */
+export const DEFAULT_STRATEGIES: NextActionStrategy[] = [
+  currentBlock,
+  overdueTask,
+  billDueSoon,
+  applicationStepDue,
+  upcomingBlock,
+  discreteGoal,
+  largestGap,
+  allClear,
+];
 
 function isEligible(goal: GoalLike): boolean {
   return goal.active && goal.showInChecklist;

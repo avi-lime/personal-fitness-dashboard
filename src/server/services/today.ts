@@ -6,8 +6,11 @@ import {
   startOfMonth,
   startOfWeek,
   toLocalDate,
+  toLocalTime,
   type LocalDate,
 } from "@/lib/date";
+import { currentBlock, nextBlock } from "@/lib/plan";
+import { round } from "@/lib/goals";
 import { computeAllGoalProgress, sortGoals, type GoalLike, type GoalProgress } from "@/lib/goals";
 import { checklistCompletion } from "@/lib/goals";
 import { resolveNextAction, type NextAction } from "@/lib/next-action";
@@ -18,7 +21,13 @@ import { densify, loadDayFacts } from "./day";
 import { listGoals, toGoalLike } from "./goals";
 import { listWorkoutsForDate, type WorkoutView } from "./workouts";
 import { listNotesForDate } from "./notes";
-import type { Note } from "@/db/schema";
+import { listTasks, countTasks, type TaskCounts } from "./tasks";
+import { getRunningTimer } from "./time";
+import { listBlocks } from "./plan";
+import { listApplications } from "./career";
+import { listBills } from "./money";
+import { getProfileFor } from "./profile";
+import type { Application, Bill, Note, Task, TimeBlock, TimeEntry } from "@/db/schema";
 
 export interface TodaySnapshot {
   date: LocalDate;
@@ -35,6 +44,11 @@ export interface TodaySnapshot {
   weightSeries: Array<{ date: LocalDate; weightKg: number }>;
   week: PeriodSummary;
   weekDays: DayFacts[];
+  tasks: TaskCounts & { items: Task[] };
+  plan: { blocks: TimeBlock[]; now: string; current: TimeBlock | null; next: TimeBlock | null };
+  time: { running: TimeEntry | null; minutesByCategory: Record<string, number> };
+  money: { currency: string; spentToday: number; spentThisWeek: number; bills: Bill[] };
+  career: { active: Application[]; nextStepsDue: Application[] };
 }
 
 /**
@@ -50,12 +64,19 @@ export async function getTodaySnapshot(
   const monthStart = startOfMonth(today);
   const windowStart = monthStart < addDays(today, -34) ? monthStart : addDays(today, -34);
 
-  const [factsMap, goalRows, workouts, notes] = await Promise.all([
-    loadDayFacts(userId, windowStart, today),
-    listGoals(userId),
-    listWorkoutsForDate(userId, today),
-    listNotesForDate(userId, today),
-  ]);
+  const [factsMap, goalRows, workouts, notes, taskRows, running, blocks, apps, pendingBills, profile] =
+    await Promise.all([
+      loadDayFacts(userId, windowStart, today),
+      listGoals(userId),
+      listWorkoutsForDate(userId, today),
+      listNotesForDate(userId, today),
+      listTasks(userId, { status: "todo", limit: 100 }),
+      getRunningTimer(userId),
+      listBlocks(userId, today),
+      listApplications(userId),
+      listBills(userId, "pending"),
+      getProfileFor(userId),
+    ]);
 
   const dense = densify(factsMap, eachDay(windowStart, today));
   const goals = sortGoals(goalRows.map(toGoalLike));
@@ -69,15 +90,32 @@ export async function getTodaySnapshot(
 
   const weekDates = lastNDays(today, 7);
   const weekDays = weekDates.map((date) => dense.get(date) ?? emptyDayFacts(date));
+  const facts = dense.get(today) ?? emptyDayFacts(today);
+  const now = toLocalTime(new Date(), timezone);
+  const bills = pendingBills.filter((bill) => bill.dueDate <= addDays(today, 30));
+  const spend = (day: DayFacts) => Object.values(day.spendByCategory).reduce((sum, v) => sum + v, 0);
+  const weekStart = startOfWeek(today);
+
+  const nextAction = resolveNextAction({
+    goals: activeGoals,
+    progressById,
+    today,
+    nowTime: now,
+    tasks: taskRows,
+    bills: pendingBills,
+    currency: profile.currency,
+    blocks,
+    applications: apps.filter((app) => app.stage !== "rejected"),
+  });
 
   return {
     date: today,
     timezone,
-    facts: dense.get(today) ?? emptyDayFacts(today),
+    facts,
     goals,
     progress,
     progressById,
-    nextAction: resolveNextAction({ goals: activeGoals, progressById }),
+    nextAction,
     checklist: checklistCompletion(activeGoals, progressById),
     workouts,
     notes,
@@ -85,6 +123,21 @@ export async function getTodaySnapshot(
     weightSeries,
     week: summarizePeriod(weekDays, weekDates[0], today),
     weekDays,
+    tasks: { ...countTasks(taskRows, today), items: taskRows },
+    plan: { blocks, now, current: currentBlock(blocks, now), next: nextBlock(blocks, now) },
+    time: { running, minutesByCategory: facts.minutesByCategory },
+    money: {
+      currency: profile.currency,
+      spentToday: round(spend(facts)),
+      spentThisWeek: round(
+        [...dense.entries()].filter(([date]) => date >= weekStart).reduce((sum, [, day]) => sum + spend(day), 0),
+      ),
+      bills,
+    },
+    career: {
+      active: apps.filter((app) => app.stage !== "rejected"),
+      nextStepsDue: apps.filter((app) => app.nextStepDate !== null && app.nextStepDate <= today),
+    },
   };
 }
 

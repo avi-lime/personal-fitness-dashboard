@@ -5,6 +5,10 @@ import { TrainingCard } from "@/components/dashboard/training-card";
 import { BodyCard } from "@/components/dashboard/body-card";
 import { WeekCard } from "@/components/dashboard/week-card";
 import { NotesCard } from "@/components/dashboard/notes-card";
+import { PlanCard } from "@/components/dashboard/plan-card";
+import { TasksCard } from "@/components/dashboard/tasks-card";
+import { MoneyCard } from "@/components/dashboard/money-card";
+import { CareerCard } from "@/components/dashboard/career-card";
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -83,6 +87,21 @@ export default async function DashboardPage() {
             </section>
           ) : null}
 
+          {sections.plan || sections.tasks ? (
+            <div className="grid gap-5 lg:grid-cols-2">
+              {sections.plan ? (
+                <PlanCard
+                  blocks={snapshot.plan.blocks}
+                  now={snapshot.plan.now}
+                  currentId={snapshot.plan.current?.id ?? null}
+                />
+              ) : null}
+              {sections.tasks ? (
+                <TasksCard tasks={snapshot.tasks.items} today={snapshot.date} overdue={snapshot.tasks.overdue} />
+              ) : null}
+            </div>
+          ) : null}
+
           {sections.training ? (
             <TrainingCard workout={workout} previousByExercise={previousByExercise} />
           ) : null}
@@ -98,6 +117,18 @@ export default async function DashboardPage() {
 
         <div className="space-y-5">
           {sections.quickActions ? <QuickActions /> : null}
+          {sections.money ? (
+            <MoneyCard
+              currency={snapshot.money.currency}
+              spentToday={snapshot.money.spentToday}
+              spentThisWeek={snapshot.money.spentThisWeek}
+              bills={snapshot.money.bills}
+              today={snapshot.date}
+            />
+          ) : null}
+          {sections.career ? (
+            <CareerCard active={snapshot.career.active} nextStepsDue={snapshot.career.nextStepsDue} />
+          ) : null}
           {sections.weekly ? (
             <WeekCard
               summary={snapshot.week}
