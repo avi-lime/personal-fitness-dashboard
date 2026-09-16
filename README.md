@@ -93,6 +93,7 @@ routines, applications and money so every page has something to show. Rows it wr
 | `ASSISTANT_API_KEY` | no | API key for the assistant's model. **Unset = assistant hidden** (quick commands still work). Default provider is Gemini: get a key at <https://aistudio.google.com/apikey>. |
 | `ASSISTANT_BASE_URL` | no | Any OpenAI-compatible chat endpoint. Defaults to Gemini's (`https://generativelanguage.googleapis.com/v1beta/openai/`). |
 | `ASSISTANT_MODEL` | no | Model id. Defaults to `gemini-3.6-flash` (run `curl …/v1beta/openai/models` with your key to see what your account offers). |
+| `ASSISTANT_FALLBACK_MODEL` | no | Tried once when the primary model answers 429/503. Defaults to `gemini-3.1-flash-lite` (its own free quota); set to `""` to disable. |
 
 The app validates these at startup and fails with a readable message if any are missing or too
 short. `.env.local` is git-ignored.
@@ -122,11 +123,27 @@ Design notes worth knowing:
 - Replies can be read aloud (speaker toggle in the box; remembered per device).
 - Every write the assistant makes is tagged `source: "assistant"` and audited with its channel.
 
-Test a key from the terminal without the browser:
+**Estimates.** Where a number is guessable, an *Estimate* button asks the model for a sensible value:
+calories and macros for a food and quantity (with the assumption it made), a category for an
+expense, and area / priority / due date for a task typed in a hurry ("update resume by Friday").
+Estimated food values are stored flagged and shown with **≈** so a guess is never mistaken for a
+measurement. By voice, "log a bowl of oats" logs typical values marked as an estimate rather than
+asking you for macros.
+
+**Briefing.** The dashboard's *Assistant* card answers "what should I do now?" with one line and 3–5
+specific, prioritised suggestions grounded in today's data; suggestions the app can carry out have
+a *Do it* button (non-destructive tools only — anything destructive still goes through the confirm
+card). Generated on demand and kept for the session.
+
+Test from the terminal without the browser:
 
 ```bash
 npm run assistant:smoke -- "log 500 ml water"
+npm run assistant:estimate -- food "masala dosa with sambar"
 ```
+
+Free tiers have small per-model quotas; when the primary model is rate-limited the runner retries
+once with the fallback model, and beyond that the app says so instead of failing silently.
 
 Speech recognition uses the browser's Web Speech API: Chrome, Edge and Safari (desktop and phone).
 Firefox has none, so the mic is hidden there and typing works identically.
