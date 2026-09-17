@@ -5,15 +5,17 @@ import { requireContext } from "@/server/auth";
 import { listFoods } from "@/server/services/food";
 import { latestWeight } from "@/server/services/body";
 import { listWorkoutTemplates } from "@/server/services/workouts";
+import { listAccounts } from "@/server/services/money";
 import { toLocalDate } from "@/lib/date";
 import { isAssistantConfigured } from "@/assistant/client";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const { user, timezone } = await requireContext();
-  const [foods, templates, weight] = await Promise.all([
+  const [foods, templates, weight, accounts] = await Promise.all([
     listFoods(user.id),
     listWorkoutTemplates(user.id),
     latestWeight(user.id),
+    listAccounts(user.id),
   ]);
 
   return (
@@ -21,6 +23,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       foods={foods}
       workoutTemplates={templates.map((template) => ({ id: template.id, name: template.name }))}
       latestWeight={weight?.weightKg ?? null}
+      accounts={accounts.map((account) => ({ id: account.id, name: account.name }))}
       assistantEnabled={isAssistantConfigured()}
     >
       <div className="flex min-h-dvh flex-col">

@@ -1,6 +1,6 @@
 import "server-only";
 import { and, asc, between, desc, eq, isNull, lte, sql } from "drizzle-orm";
-import { db } from "@/db";
+import { db, type Database } from "@/db";
 import { bills, moneyAccounts, transactions } from "@/db/schema";
 import type { Bill, MoneyAccount, Transaction } from "@/db/schema";
 import type { BillStatus, EntrySource, TransactionKind } from "@/lib/domain";
@@ -16,6 +16,8 @@ import type {
 import { eventTiming } from "./common";
 import { loadDayFacts } from "./day";
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 // --- Accounts --------------------------------------------------------------
 
 export async function listAccounts(userId: string, includeArchived = false): Promise<MoneyAccount[]> {
@@ -29,9 +31,27 @@ export async function listAccounts(userId: string, includeArchived = false): Pro
 }
 
 export async function getAccount(userId: string, accountId: string): Promise<MoneyAccount | null> {
-  const row = await db.query.moneyAccounts.findFirst({
-    where: and(eq(moneyAccounts.id, accountId), eq(moneyAccounts.userId, userId)),
-  });
+  return accountOn(db, userId, accountId);
+}
+
+/**
+ * Account lookup on an explicit executor.
+ *
+ * Inside `db.transaction` the query **must** run on `tx`. The pool is `max: 1`
+ * in production, so a lookup on the outer `db` would wait for the connection
+ * the open transaction is holding, and the request would hang until the
+ * serverless function timed out.
+ */
+async function accountOn(
+  executor: Database | Tx,
+  userId: string,
+  accountId: string,
+): Promise<MoneyAccount | null> {
+  const [row] = await executor
+    .select()
+    .from(moneyAccounts)
+    .where(and(eq(moneyAccounts.id, accountId), eq(moneyAccounts.userId, userId)))
+    .limit(1);
   return row ?? null;
 }
 
@@ -75,7 +95,6 @@ export async function archiveAccount(userId: string, accountId: string): Promise
 
 // --- Transactions ----------------------------------------------------------
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /**
  * Signed effect of a transaction on an account's balance.
@@ -117,8 +136,8 @@ export async function recordTransaction(
 ): Promise<Transaction> {
   const { occurredAt, localDate } = eventTiming(timezone, input.occurredAt);
   return db.transaction(async (tx) => {
-    const from = input.accountId ? await getAccount(userId, input.accountId) : null;
-    const to = input.transferAccountId ? await getAccount(userId, input.transferAccountId) : null;
+    const from = input.accountId ? await accountOn(tx, userId, input.accountId) : null;
+    const to = input.transferAccountId ? await accountOn(tx, userId, input.transferAccountId) : null;
     if (input.accountId && !from) throw new Error("Account not found");
     if (input.transferAccountId && !to) throw new Error("Destination account not found");
 
@@ -192,8 +211,8 @@ export async function deleteTransaction(userId: string, transactionId: string): 
       .where(and(eq(transactions.id, transactionId), eq(transactions.userId, userId)))
       .returning();
     if (!deleted) return null;
-    const from = deleted.accountId ? await getAccount(userId, deleted.accountId) : null;
-    const to = deleted.transferAccountId ? await getAccount(userId, deleted.transferAccountId) : null;
+    const from = deleted.accountId ? await accountOn(tx, userId, deleted.accountId) : null;
+    const to = deleted.transferAccountId ? await accountOn(tx, userId, deleted.transferAccountId) : null;
     if (from) await adjust(tx, userId, from.id, -effectOn(from, deleted.kind, deleted.amount, "from"));
     if (to) await adjust(tx, userId, to.id, -effectOn(to, deleted.kind, deleted.amount, "to"));
     await tx.update(bills).set({ status: "pending", paidTransactionId: null }).where(eq(bills.paidTransactionId, deleted.id));

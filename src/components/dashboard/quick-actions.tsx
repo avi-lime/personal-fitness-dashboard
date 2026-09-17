@@ -1,6 +1,6 @@
 "use client";
 
-import { Apple, Droplet, Dumbbell, Moon, NotebookPen, Scale, Zap } from "lucide-react";
+import { Apple, Droplet, Dumbbell, Moon, NotebookPen, Scale, Wallet, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAction } from "@/components/common/use-action";
@@ -8,9 +8,11 @@ import { useLogDialogs, type LogDialogKind } from "@/components/log/log-provider
 import { logWaterAction } from "@/server/actions/logging";
 import { WATER_PRESETS_ML } from "@/lib/water-presets";
 
+/** Ordered by how often a day needs them — food, water and money lead. */
 const ACTIONS: Array<{ kind: LogDialogKind; label: string; icon: typeof Apple }> = [
-  { kind: "food", label: "Log food", icon: Apple },
+  { kind: "food", label: "Food", icon: Apple },
   { kind: "water", label: "Water", icon: Droplet },
+  { kind: "money", label: "Money", icon: Wallet },
   { kind: "weight", label: "Weight", icon: Scale },
   { kind: "sleep", label: "Sleep", icon: Moon },
   { kind: "workout", label: "Workout", icon: Dumbbell },
@@ -24,14 +26,14 @@ export function QuickActions() {
   return (
     <Card className="gap-3 p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium">Quick actions</h2>
+        <h2 className="text-sm font-medium">Log</h2>
         <Button variant="ghost" size="sm" onClick={() => open("quick")} className="gap-1.5">
           <Zap className="size-3.5" aria-hidden />
           Quick entry
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
         {ACTIONS.map((action) => (
           <Button
             key={action.kind}

@@ -53,6 +53,14 @@ export function AssistantDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
+        onOpenAutoFocus={(event) => {
+          if (!autoListen) return;
+          // Voice mode: keep focus off the text field, or the phone (and a
+          // touch-screen PC) pops up the on-screen keyboard over the dialog
+          // while the microphone is already listening.
+          event.preventDefault();
+          (event.currentTarget as HTMLElement).focus();
+        }}
         className={cn(
           "gap-0 p-0 sm:max-w-lg",
           // Bottom sheet on phones: full width, pinned above the keyboard, with a grab handle.

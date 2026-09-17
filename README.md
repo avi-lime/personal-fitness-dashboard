@@ -37,7 +37,7 @@ Change the goals and the dashboard, checklist, weekly review and assistant follo
 
 | Area | What you get |
 | --- | --- |
-| **Dashboard** (`/`) | The single next action (a block happening now, an overdue task, a bill due, an application step, then goals), configurable goal cards, today's plan, open tasks, quick actions, training, body, money, career, 7-day summary, notes. |
+| **Dashboard** (`/`) | Ordered by how often you touch it: the single next action (a block happening now, an overdue task, a bill due, an application step, then goals), then **Log** (food, water, money, weight, sleep, workout, note, plus one-tap water), today's plan, open tasks, today's calories and macros, then goal progress, training, body, money, career, 7-day summary, notes. Every section can be turned off in Settings. |
 | **Goals** (`/goals`) | Add, edit, pause, reorder, archive. Types: numeric, duration, boolean, count. Periods: daily, weekly, monthly, one-time. Metric sources include tracked time (per category), tasks completed, applications sent, spend (per category or all) and income. |
 | **Plan** (`/plan`) | A day as time blocks. Routines (gym 07:00 on mon/wed/fri…) become blocks with "Plan my day"; one-off blocks are added by hand or by voice. |
 | **Tasks** (`/tasks`) | To-dos with area, due date and priority, grouped overdue / today / upcoming / no date / done. |
@@ -46,7 +46,7 @@ Change the goals and the dashboard, checklist, weekly review and assistant follo
 | **Money** (`/money`) | Manual ledger: expenses by category, income, accounts (bank, cash, wallet, credit card with limit and due day), bills and pending payments; spend today / week / month. Balances update with every entry. |
 | **Food / Training / Body / History / Review** | Unchanged from the fitness core: food log with reusable foods and meal templates, workouts with sets and templates, weight/sleep/water, history charts, weekly review. |
 | **Monitor mode** (`/monitor`) | Second-screen view: large clock, next action, goal progress, plan, tasks, money, training, weight, weekly trend. Refreshes every minute. |
-| **Assistant** | `Ctrl`/`Cmd` + `K`: type or dictate. Recognised quick commands (`+500 ml water`, `weigh 50.4 kg`) run instantly with no model; anything else goes to the assistant, which calls the same tools and answers in a sentence. Destructive requests ask for confirmation. |
+| **Assistant** | `Ctrl`/`Cmd` + `K`, or the microphone in the centre of the phone tab bar: type or dictate. Recognised quick commands (`+500 ml water`, `weigh 50.4 kg`) run instantly with no model; anything else goes to the assistant, which calls the same tools and answers in a sentence. Destructive requests ask for confirmation. |
 | **MCP** (`/api/mcp`) | 42 narrowly scoped tools behind bearer-token auth, with an audit row per mutation. |
 
 ## Stack

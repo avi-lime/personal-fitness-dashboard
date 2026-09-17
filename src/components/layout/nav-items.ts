@@ -19,17 +19,15 @@ export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** Shown in the phone tab bar (keep to five). */
-  mobile?: boolean;
 }
 
-/** One list drives the desktop header nav and the phone tab bar. */
+/** One list drives the desktop header nav, the phone tab bar and the More page. */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { href: "/", label: "Today", icon: Home, mobile: true },
-  { href: "/plan", label: "Plan", icon: CalendarDays, mobile: true },
-  { href: "/tasks", label: "Tasks", icon: CheckSquare, mobile: true },
+  { href: "/", label: "Today", icon: Home },
+  { href: "/plan", label: "Plan", icon: CalendarDays },
+  { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/time", label: "Time", icon: Timer },
-  { href: "/money", label: "Money", icon: Wallet, mobile: true },
+  { href: "/money", label: "Money", icon: Wallet },
   { href: "/career", label: "Career", icon: Briefcase },
   { href: "/food", label: "Food", icon: Apple },
   { href: "/training", label: "Training", icon: Dumbbell },
@@ -39,7 +37,17 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/goals", label: "Goals", icon: Target },
 ];
 
-export const MORE_ITEM: NavItem = { href: "/settings", label: "More", icon: Ellipsis, mobile: true };
+export const MORE_ITEM: NavItem = { href: "/settings", label: "More", icon: Ellipsis };
+
+/**
+ * The phone tab bar, in order: two tabs, the microphone, then two tabs and
+ * More. These are the pages worth a thumb-reach tab — the things logged many
+ * times a day. Everything else lives behind More.
+ */
+export const MOBILE_TABS: readonly NavItem[] = ["/", "/food", "/tasks", "/money"]
+  .map((href) => NAV_ITEMS.find((item) => item.href === href))
+  .filter((item): item is NavItem => Boolean(item))
+  .concat(MORE_ITEM);
 
 export function isActivePath(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);

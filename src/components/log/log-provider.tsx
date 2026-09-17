@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { FoodDialog } from "./food-dialog";
+import { MoneyDialog, type MoneyAccountOption } from "./money-dialog";
 import { NoteDialog } from "./note-dialog";
 import { AssistantDialog } from "@/components/assistant/assistant-dialog";
 import { SleepDialog } from "./sleep-dialog";
@@ -11,7 +12,15 @@ import { WeightDialog } from "./weight-dialog";
 import { WorkoutDialog, type WorkoutTemplateOption } from "./workout-dialog";
 import type { Food } from "@/db/schema";
 
-export type LogDialogKind = "quick" | "food" | "water" | "weight" | "sleep" | "workout" | "note";
+export type LogDialogKind =
+  | "quick"
+  | "food"
+  | "water"
+  | "money"
+  | "weight"
+  | "sleep"
+  | "workout"
+  | "note";
 
 export interface OpenOptions {
   /** Start the microphone as the dialog opens (assistant dialog only). */
@@ -48,12 +57,14 @@ export function LogProvider({
   foods,
   workoutTemplates,
   latestWeight,
+  accounts,
   assistantEnabled,
 }: {
   children: ReactNode;
   foods: Food[];
   workoutTemplates: WorkoutTemplateOption[];
   latestWeight: number | null;
+  accounts: MoneyAccountOption[];
   assistantEnabled: boolean;
 }) {
   const [active, setActive] = useState<LogDialogKind | null>(null);
@@ -94,6 +105,7 @@ export function LogProvider({
       <AssistantDialog {...bind("quick")} assistantEnabled={assistantEnabled} autoListen={listen} />
       <FoodDialog {...bind("food")} foods={foods} />
       <WaterDialog {...bind("water")} />
+      <MoneyDialog {...bind("money")} accounts={accounts} />
       <WeightDialog {...bind("weight")} suggested={latestWeight} />
       <SleepDialog {...bind("sleep")} />
       <WorkoutDialog {...bind("workout")} templates={workoutTemplates} />

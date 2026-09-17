@@ -1,6 +1,7 @@
 import { NextActionCard } from "@/components/dashboard/next-action-card";
 import { GoalCard } from "@/components/dashboard/goal-card";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { NutritionCard } from "@/components/dashboard/nutrition-card";
 import { TrainingCard } from "@/components/dashboard/training-card";
 import { BodyCard } from "@/components/dashboard/body-card";
 import { WeekCard } from "@/components/dashboard/week-card";
@@ -30,6 +31,12 @@ export default async function DashboardPage() {
     (goal) => snapshot.progressById.get(goal.id)?.status === "complete",
   ).length;
 
+  // Daily targets come from the goals themselves, so the card never invents one.
+  const dailyTarget = (metric: string): number | null =>
+    snapshot.goals.find(
+      (goal) => goal.active && goal.metricKey === metric && goal.period === "daily",
+    )?.targetValue ?? null;
+
   const workout = snapshot.workouts[0] ?? null;
   const previousByExercise: Record<string, PreviousPerformance | null> = {};
   if (workout) {
@@ -57,14 +64,50 @@ export default async function DashboardPage() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="space-y-5">
+          {sections.quickActions ? <QuickActions /> : null}
+
+          {sections.plan || sections.tasks ? (
+            <div className="grid gap-5 lg:grid-cols-2">
+              {sections.plan ? (
+                <PlanCard
+                  blocks={snapshot.plan.blocks}
+                  now={snapshot.plan.now}
+                  currentId={snapshot.plan.current?.id ?? null}
+                />
+              ) : null}
+              {sections.tasks ? (
+                <TasksCard tasks={snapshot.tasks.items} today={snapshot.date} overdue={snapshot.tasks.overdue} />
+              ) : null}
+            </div>
+          ) : null}
+
+          {sections.food ? (
+            <NutritionCard
+              totals={{
+                calories: snapshot.facts.calories,
+                protein: snapshot.facts.protein,
+                carbs: snapshot.facts.carbs,
+                fat: snapshot.facts.fat,
+                waterMl: snapshot.facts.waterMl,
+              }}
+              targets={{
+                calories: dailyTarget("calories"),
+                protein: dailyTarget("protein"),
+                carbs: dailyTarget("carbs"),
+                fat: dailyTarget("fat"),
+                waterLitres: dailyTarget("water_ml"),
+              }}
+            />
+          ) : null}
+
           {sections.today ? (
             <section aria-labelledby="today-heading" className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 id="today-heading" className="text-sm font-medium">
-                  Today
+                  Goal progress
                 </h2>
                 <Button variant="ghost" size="sm" asChild>
-                  <Link href="/goals">Manage goals</Link>
+                  <Link href="/goals">Manage</Link>
                 </Button>
               </div>
               {dashboardGoals.length === 0 ? (
@@ -92,21 +135,6 @@ export default async function DashboardPage() {
             </section>
           ) : null}
 
-          {sections.plan || sections.tasks ? (
-            <div className="grid gap-5 lg:grid-cols-2">
-              {sections.plan ? (
-                <PlanCard
-                  blocks={snapshot.plan.blocks}
-                  now={snapshot.plan.now}
-                  currentId={snapshot.plan.current?.id ?? null}
-                />
-              ) : null}
-              {sections.tasks ? (
-                <TasksCard tasks={snapshot.tasks.items} today={snapshot.date} overdue={snapshot.tasks.overdue} />
-              ) : null}
-            </div>
-          ) : null}
-
           {sections.training ? (
             <TrainingCard workout={workout} previousByExercise={previousByExercise} />
           ) : null}
@@ -122,7 +150,6 @@ export default async function DashboardPage() {
 
         <div className="space-y-5">
           {isAssistantConfigured() ? <BriefingCard date={snapshot.date} /> : null}
-          {sections.quickActions ? <QuickActions /> : null}
           {sections.money ? (
             <MoneyCard
               currency={snapshot.money.currency}

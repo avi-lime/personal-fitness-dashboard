@@ -165,10 +165,11 @@ export type GoalStatus = (typeof GOAL_STATUSES)[number];
 /** The dashboard sections a user can show or hide. */
 export const DASHBOARD_SECTIONS = [
   "nextAction",
-  "today",
+  "quickActions",
   "plan",
   "tasks",
-  "quickActions",
+  "food",
+  "today",
   "training",
   "body",
   "money",
@@ -182,10 +183,11 @@ export type DashboardSectionVisibility = Record<DashboardSection, boolean>;
 
 export const DEFAULT_DASHBOARD_SECTIONS: DashboardSectionVisibility = {
   nextAction: true,
-  today: true,
+  quickActions: true,
   plan: true,
   tasks: true,
-  quickActions: true,
+  food: true,
+  today: true,
   training: true,
   body: true,
   money: true,

@@ -3,24 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Mic } from "lucide-react";
-import { MORE_ITEM, NAV_ITEMS, isActivePath } from "./nav-items";
+import { MOBILE_TABS, isActivePath } from "./nav-items";
 import { useLogDialogs } from "@/components/log/log-provider";
 import { useSpeechRecognition } from "@/components/assistant/use-speech-recognition";
 import { cn } from "@/lib/utils";
 
 /**
- * Phone tab bar. The microphone is the raised centre action, so it never
- * covers page controls the way a floating button would.
+ * Phone tab bar: Today · Food · mic · Tasks · Money · More.
+ *
+ * The microphone is the raised centre action, so it never covers page controls
+ * the way a floating button would, and it is the one control reachable with a
+ * thumb from any page. Tapping it starts listening straight away — the dialog
+ * deliberately does not focus its text field, so no keyboard appears.
  */
 export function MobileNav() {
   const pathname = usePathname();
   const { open } = useLogDialogs();
   const { supported } = useSpeechRecognition(() => {});
-  const items = [...NAV_ITEMS.filter((item) => item.mobile), MORE_ITEM].slice(0, 5);
-  const left = items.slice(0, 2);
-  const right = items.slice(2);
+  const left = MOBILE_TABS.slice(0, 2);
+  const right = MOBILE_TABS.slice(2);
 
-  const tab = (item: (typeof items)[number]) => {
+  const tab = (item: (typeof MOBILE_TABS)[number]) => {
     const active = isActivePath(pathname, item.href);
     return (
       <li key={item.href}>
