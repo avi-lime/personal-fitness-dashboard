@@ -155,9 +155,10 @@ Google may use free-tier prompts for training; use a paid key or another provide
 ## Using it on a phone
 
 The same deployment is a PWA. Open it in Chrome (Android) or Safari (iOS) and choose **Add to
-Home Screen** — it installs as a standalone app. Phones get a five-tab bar (Today, Plan, Tasks,
-Money, More), a floating microphone button in thumb reach, and the assistant box as a bottom sheet.
-The **More** tab (Settings) lists every page. Dictation on iOS needs a tap per utterance
+Home Screen** — it installs as a standalone app. Phones get a tab bar of Today · Food · **mic** ·
+Tasks · Money — four tabs so the raised microphone sits dead centre in thumb reach — and the
+assistant box as a bottom sheet. Every other page is behind **More** (the `…` menu in the header),
+which also holds monitor mode, the theme and sign-out. Dictation on iOS needs a tap per utterance
 (tap to start, speak, tap to stop or just pause).
 
 ## Database and migrations

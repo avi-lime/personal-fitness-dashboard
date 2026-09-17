@@ -9,12 +9,16 @@ import { useSpeechRecognition } from "@/components/assistant/use-speech-recognit
 import { cn } from "@/lib/utils";
 
 /**
- * Phone tab bar: Today · Food · mic · Tasks · Money · More.
+ * Phone tab bar: Today · Food · mic · Tasks · Money.
  *
  * The microphone is the raised centre action, so it never covers page controls
  * the way a floating button would, and it is the one control reachable with a
  * thumb from any page. Tapping it starts listening straight away — the dialog
  * deliberately does not focus its text field, so no keyboard appears.
+ *
+ * Four tabs, not five: the mic occupies the middle column of an odd grid so it
+ * is exactly centred. Everything beyond these pages is behind More in the
+ * header.
  */
 export function MobileNav() {
   const pathname = usePathname();
@@ -48,7 +52,7 @@ export function MobileNav() {
       className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 backdrop-blur md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <ul className="grid grid-cols-6 items-end">
+      <ul className="grid grid-cols-5 items-end">
         {left.map(tab)}
         <li className="flex justify-center">
           <button

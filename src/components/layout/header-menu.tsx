@@ -15,8 +15,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { logoutAction } from "@/server/actions/auth";
+import { NAV_ITEMS } from "./nav-items";
 
-/** Monitor, theme, settings and sign-out behind one trigger — the header stays one row. */
+/**
+ * More: every page, then monitor, theme and sign-out, behind one trigger.
+ *
+ * On a phone this is the only way to the pages the tab bar has no room for, so
+ * the page list is part of the menu rather than a trip through Settings. On
+ * desktop the header already shows the same links in a row, so the list hides.
+ */
 export function HeaderMenu() {
   const { theme, setTheme } = useTheme();
   return (
@@ -26,7 +33,20 @@ export function HeaderMenu() {
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuContent align="end" className="w-60">
+        <div className="md:hidden">
+          <DropdownMenuLabel>Pages</DropdownMenuLabel>
+          <div className="grid grid-cols-2 gap-0.5">
+            {NAV_ITEMS.map((item) => (
+              <DropdownMenuItem key={item.href} asChild>
+                <Link href={item.href}>
+                  <item.icon className="size-4" /> {item.label}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </div>
+          <DropdownMenuSeparator />
+        </div>
         <DropdownMenuItem asChild>
           <Link href="/monitor">
             <MonitorPlay className="size-4" /> Monitor mode

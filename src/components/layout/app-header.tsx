@@ -27,8 +27,12 @@ export function AppHeader({ date, timezone }: { date: LocalDate; timezone: strin
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
-          <QuickEntryButton />
-          <AssistantMicButton />
+          {/* The phone tab bar already carries a microphone, and Ctrl+K needs a
+              keyboard — both would only be clutter on a small screen. */}
+          <div className="hidden items-center gap-1.5 md:flex">
+            <QuickEntryButton />
+            <AssistantMicButton />
+          </div>
           <HeaderMenu />
         </div>
       </div>

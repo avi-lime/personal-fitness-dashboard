@@ -7,7 +7,6 @@ import {
   CalendarDays,
   CheckSquare,
   Dumbbell,
-  Ellipsis,
   Home,
   Scale,
   Target,
@@ -37,17 +36,17 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/goals", label: "Goals", icon: Target },
 ];
 
-export const MORE_ITEM: NavItem = { href: "/settings", label: "More", icon: Ellipsis };
-
 /**
- * The phone tab bar, in order: two tabs, the microphone, then two tabs and
- * More. These are the pages worth a thumb-reach tab — the things logged many
- * times a day. Everything else lives behind More.
+ * The phone tab bar: two tabs, the microphone, two tabs.
+ *
+ * Exactly four, so the raised microphone lands in the middle column of five
+ * and sits dead centre — an even number of slots would always leave it half a
+ * column off. These are the pages worth a thumb-reach tab; everything else is
+ * behind More in the header.
  */
 export const MOBILE_TABS: readonly NavItem[] = ["/", "/food", "/tasks", "/money"]
   .map((href) => NAV_ITEMS.find((item) => item.href === href))
-  .filter((item): item is NavItem => Boolean(item))
-  .concat(MORE_ITEM);
+  .filter((item): item is NavItem => Boolean(item));
 
 export function isActivePath(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
