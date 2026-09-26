@@ -14,6 +14,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
+    "db:seed:diet": "tsx scripts/seed-diet.ts",
     "db:reset": "tsx scripts/reset.ts",
     "db:up": "docker start life-dashboard-db 2>/dev/null || docker compose up -d db",
     "db:down": "docker stop life-dashboard-db",

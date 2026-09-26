@@ -43,6 +43,13 @@
       "when": 1789570722223,
       "tag": "0005_food_estimated",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790413159446,
+      "tag": "0006_diet_plan",
+      "breakpoints": true
     }
   ]
 }

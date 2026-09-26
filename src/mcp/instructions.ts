@@ -1,5 +1,5 @@
 /** Sent to clients during initialization; shapes how a model should use this server. */
-export const SERVER_INSTRUCTIONS = `This server controls one person's private life dashboard: goals, food, water, weight, sleep, workouts, notes, tasks, time tracking (study, freelance, work, career…), a job-application pipeline, a planned day made of time blocks and routines, and money (accounts, expenses, income, bills).
+export const SERVER_INSTRUCTIONS = `This server controls one person's private life dashboard: goals, food, water, weight, sleep, workouts, notes, tasks, time tracking (study, freelance, work, career…), a job-application pipeline, a planned day made of time blocks and routines, money (accounts, expenses, income, bills), and a diet plan.
 
 Read tools (get_*) are safe to call whenever you need context; they never change anything.
 
@@ -14,5 +14,7 @@ Rules of thumb:
 - Life areas are a fixed list: fitness, nutrition, work, freelance, career, study, money, personal.
 - "Plan my day" means plan_day (routines → blocks); then add_block for one-off items the user mentions. Times are HH:MM in the user's timezone.
 - Job applications move through wishlist → applied → screening → interview → offer / rejected via update_application; archive only when the user wants it gone.
+- Diet plan vs food log: get_diet_plan is what the user PLANS to eat (meals, each with a default option and alternatives); get_food_log is what they actually ate. "What should I have for dinner?" and "change my dinner options" are the plan; "I had egg bhurji" is log_food. Editing the plan never logs food, and logging food never changes the plan. Call get_diet_plan before editing it, and identify meals and options by name — the tools match loosely. Removing an option disables it rather than deleting it, so it can be restored.
+- Diet targets vs goals: the plan's calorie/protein targets are what its meals were designed around; goals are what progress is scored against. Changing one does not change the other — if the user wants both, say so and use update_diet_plan and update_goal.
 - Money: "I spent 250 on lunch" is log_expense (category food). Amounts are in the user's currency. A bill that was paid is pay_bill; paying off a credit card is a transfer, not spending. Never invent amounts.
 - Ask for clarification rather than guessing when a mutation is ambiguous.`;

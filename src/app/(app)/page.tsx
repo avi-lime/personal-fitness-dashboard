@@ -2,6 +2,7 @@ import { NextActionCard } from "@/components/dashboard/next-action-card";
 import { GoalCard } from "@/components/dashboard/goal-card";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { NutritionCard } from "@/components/dashboard/nutrition-card";
+import { DietCard } from "@/components/dashboard/diet-card";
 import { TrainingCard } from "@/components/dashboard/training-card";
 import { BodyCard } from "@/components/dashboard/body-card";
 import { WeekCard } from "@/components/dashboard/week-card";
@@ -17,13 +18,17 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { requireContext } from "@/server/auth";
 import { getTodaySnapshot } from "@/server/services/today";
+import { getDietPlan } from "@/server/services/diet";
 import { previousPerformance, type PreviousPerformance } from "@/server/services/workouts";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const { user, timezone, profile, sections } = await requireContext();
-  const snapshot = await getTodaySnapshot(user.id, timezone);
+  const [snapshot, diet] = await Promise.all([
+    getTodaySnapshot(user.id, timezone),
+    sections.diet ? getDietPlan(user.id) : null,
+  ]);
 
   const dashboardGoals = snapshot.goals.filter((goal) => goal.active && goal.visibleOnDashboard);
   const checklistGoals = snapshot.goals.filter((goal) => goal.active && goal.showInChecklist);
@@ -157,6 +162,21 @@ export default async function DashboardPage() {
               spentThisWeek={snapshot.money.spentThisWeek}
               bills={snapshot.money.bills}
               today={snapshot.date}
+            />
+          ) : null}
+          {sections.diet && diet ? (
+            <DietCard
+              planName={diet.plan.name}
+              calorieTarget={diet.plan.calorieTarget}
+              proteinTarget={diet.plan.proteinTarget}
+              meals={diet.meals.map((meal) => ({
+                id: meal.id,
+                name: meal.name,
+                recommendedTime: meal.recommendedTime,
+                defaultOption:
+                  (meal.options.find((option) => option.isDefault) ?? meal.options[0])?.name ?? null,
+                calorieTarget: meal.calorieTarget,
+              }))}
             />
           ) : null}
           {sections.career ? (

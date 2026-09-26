@@ -5,6 +5,9 @@ import { db } from "@/db";
 import {
   applications,
   bills,
+  dietMealOptions,
+  dietMeals,
+  dietPlans,
   foodLogs,
   foods,
   goalEntries,
@@ -31,7 +34,7 @@ import {
 import { getHistory } from "./summary";
 import { addDays, toLocalDate, type LocalDate } from "@/lib/date";
 
-export const EXPORT_VERSION = 2;
+export const EXPORT_VERSION = 3;
 
 /** A complete, portable copy of one user's data. */
 export interface ExportBundle {
@@ -57,6 +60,8 @@ export interface ExportBundle {
   moneyAccounts: unknown[];
   transactions: unknown[];
   bills: unknown[];
+  /** Added in version 3. Meals and options travel nested inside each plan. */
+  dietPlans: unknown[];
 }
 
 export async function exportData(userId: string): Promise<ExportBundle> {
@@ -81,6 +86,7 @@ export async function exportData(userId: string): Promise<ExportBundle> {
     accountRows,
     transactionRows,
     billRows,
+    dietPlanRows,
   ] = await Promise.all([
     db.query.profiles.findFirst({ where: eq(profiles.userId, userId) }),
     db.select().from(goals).where(eq(goals.userId, userId)),
@@ -111,6 +117,10 @@ export async function exportData(userId: string): Promise<ExportBundle> {
     db.select().from(moneyAccounts).where(eq(moneyAccounts.userId, userId)),
     db.select().from(transactions).where(eq(transactions.userId, userId)),
     db.select().from(bills).where(eq(bills.userId, userId)),
+    db.query.dietPlans.findMany({
+      where: eq(dietPlans.userId, userId),
+      with: { meals: { with: { options: true } } },
+    }),
   ]);
 
   return {
@@ -136,6 +146,7 @@ export async function exportData(userId: string): Promise<ExportBundle> {
     moneyAccounts: accountRows,
     transactions: transactionRows,
     bills: billRows,
+    dietPlans: dietPlanRows,
   };
 }
 
@@ -203,6 +214,7 @@ const importSchema = z.object({
   moneyAccounts: z.array(z.record(z.string(), z.unknown())).default([]),
   transactions: z.array(z.record(z.string(), z.unknown())).default([]),
   bills: z.array(z.record(z.string(), z.unknown())).default([]),
+  dietPlans: z.array(z.record(z.string(), z.unknown())).default([]),
 });
 
 export interface ImportReport {
@@ -218,6 +230,7 @@ export interface ImportReport {
   routines: number;
   transactions: number;
   bills: number;
+  dietPlans: number;
 }
 
 type Row = Record<string, unknown>;
@@ -226,6 +239,9 @@ const str = (row: Row, key: string): string | null =>
   typeof row[key] === "string" ? (row[key] as string) : null;
 const num = (row: Row, key: string): number | null =>
   typeof row[key] === "number" && Number.isFinite(row[key]) ? (row[key] as number) : null;
+/** Nested child rows of an exported parent (diet meals, meal options). */
+const rows = (row: Row, key: string): Row[] =>
+  Array.isArray(row[key]) ? (row[key] as unknown[]).filter((item): item is Row => typeof item === "object" && item !== null) : [];
 const date = (row: Row, key: string): Date | null => {
   const value = row[key];
   if (typeof value !== "string" && !(value instanceof Date)) return null;
@@ -248,6 +264,7 @@ export async function importData(userId: string, payload: unknown): Promise<Impo
     routines: 0,
     transactions: 0,
     bills: 0,
+    dietPlans: 0,
   };
 
   await db.transaction(async (tx) => {
@@ -522,6 +539,68 @@ export async function importData(userId: string, payload: unknown): Promise<Impo
       });
       report.bills += 1;
     }
+
+    // Plans own their meals, and meals own their options, so each level is
+    // inserted under the id the level above just produced.
+    for (const row of bundle.dietPlans) {
+      const name = str(row, "name");
+      if (!name) continue;
+      const [plan] = await tx
+        .insert(dietPlans)
+        .values({
+          userId,
+          name,
+          goal: str(row, "goal"),
+          calorieTarget: num(row, "calorieTarget"),
+          proteinTarget: num(row, "proteinTarget"),
+          carbsTarget: num(row, "carbsTarget"),
+          fatTarget: num(row, "fatTarget"),
+          notes: str(row, "notes"),
+          active: row.active !== false,
+        })
+        .returning({ id: dietPlans.id });
+      report.dietPlans += 1;
+
+      for (const [index, mealRow] of rows(row, "meals").entries()) {
+        const mealName = str(mealRow, "name");
+        if (!mealName) continue;
+        const [meal] = await tx
+          .insert(dietMeals)
+          .values({
+            planId: plan.id,
+            name: mealName,
+            recommendedTime: str(mealRow, "recommendedTime"),
+            mealType: (str(mealRow, "mealType") ?? "other") as never,
+            calorieTarget: num(mealRow, "calorieTarget"),
+            proteinTarget: num(mealRow, "proteinTarget"),
+            notes: str(mealRow, "notes"),
+            sortOrder: num(mealRow, "sortOrder") ?? index,
+            active: mealRow.active !== false,
+          })
+          .returning({ id: dietMeals.id });
+
+        for (const [position, optionRow] of rows(mealRow, "options").entries()) {
+          const optionName = str(optionRow, "name");
+          if (!optionName) continue;
+          await tx.insert(dietMealOptions).values({
+            mealId: meal.id,
+            name: optionName,
+            description: str(optionRow, "description"),
+            ingredients: Array.isArray(optionRow.ingredients)
+              ? optionRow.ingredients.filter((item): item is string => typeof item === "string")
+              : [],
+            calories: num(optionRow, "calories"),
+            proteinG: num(optionRow, "proteinG"),
+            carbsG: num(optionRow, "carbsG"),
+            fatG: num(optionRow, "fatG"),
+            notes: str(optionRow, "notes"),
+            sortOrder: num(optionRow, "sortOrder") ?? position,
+            isDefault: optionRow.isDefault === true,
+            active: optionRow.active !== false,
+          });
+        }
+      }
+    }
   });
 
   return report;
@@ -561,6 +640,8 @@ export async function deleteAllData(userId: string): Promise<void> {
         .where(eq(workoutTemplateExercises.templateId, id));
     }
 
+    // Meals and their options cascade from the plan.
+    await tx.delete(dietPlans).where(eq(dietPlans.userId, userId));
     await tx.delete(timeBlocks).where(eq(timeBlocks.userId, userId));
     await tx.delete(routines).where(eq(routines.userId, userId));
     await tx.delete(tasks).where(eq(tasks.userId, userId));

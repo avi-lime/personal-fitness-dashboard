@@ -13,6 +13,7 @@ const LABELS: Record<DashboardSection, string> = {
   plan: "Today's plan",
   tasks: "Tasks",
   food: "Food today",
+  diet: "Diet plan",
   today: "Goal progress",
   training: "Training",
   body: "Body & weight",

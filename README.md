@@ -44,10 +44,11 @@ Change the goals and the dashboard, checklist, weekly review and assistant follo
 | **Time** (`/time`) | One running timer at a time, finished sessions by category, per-area totals, a weekly trend. Sessions feed "time tracked" goals. |
 | **Career** (`/career`) | Applications by stage (wishlist → applied → screening → interview → offer / rejected) with next steps and dates; prep time this week. |
 | **Money** (`/money`) | Manual ledger: expenses by category, income, accounts (bank, cash, wallet, credit card with limit and due day), bills and pending payments; spend today / week / month. Balances update with every entry. |
+| **Diet** (`/diet`) | The plan: daily calorie/protein targets and the meals of a day, each with a default option and alternatives (dinner is a rotation, not one dish). Editable here or by the assistant. "Log this" is the only thing that writes a food log. |
 | **Food / Training / Body / History / Review** | Unchanged from the fitness core: food log with reusable foods and meal templates, workouts with sets and templates, weight/sleep/water, history charts, weekly review. |
 | **Monitor mode** (`/monitor`) | Second-screen view: large clock, next action, goal progress, plan, tasks, money, training, weight, weekly trend. Refreshes every minute. |
 | **Assistant** | `Ctrl`/`Cmd` + `K`, or the microphone in the centre of the phone tab bar: type or dictate. Recognised quick commands (`+500 ml water`, `weigh 50.4 kg`) run instantly with no model; anything else goes to the assistant, which calls the same tools and answers in a sentence. Destructive requests ask for confirmation. |
-| **MCP** (`/api/mcp`) | 42 narrowly scoped tools behind bearer-token auth, with an audit row per mutation. |
+| **MCP** (`/api/mcp`) | 51 narrowly scoped tools behind bearer-token auth, with an audit row per mutation. |
 
 ## Stack
 
@@ -80,6 +81,14 @@ is created automatically on first sign-in.
 Optional, development only: `npm run db:seed` loads sample goals, food, a workout, tasks, time,
 routines, applications and money so every page has something to show. Rows it writes are tagged
 `source: "seed"` and refuse to load in production.
+
+`npm run db:seed:diet` is separate and **safe against a real deployment**: it writes the starting
+diet plan (`src/lib/diet-seed.ts`) once and does nothing at all if the user already has one, so it
+can be run against Neon to populate `/diet` without touching anything else:
+
+```bash
+DATABASE_URL="<neon pooled url>" npm run db:seed:diet
+```
 
 ## Environment variables
 
@@ -188,6 +197,7 @@ npm run typecheck      # route typegen + tsc --noEmit
 npm test               # Vitest (single run)
 npm run test:watch
 npm run db:seed        # development-only sample data
+npm run db:seed:diet   # the starting diet plan, once; safe on a real deployment
 npm run assistant:smoke -- "…"   # one assistant request from the terminal
 ```
 
@@ -268,7 +278,7 @@ records these calls with channel `chatgpt`. **Treat the URL as a secret** — an
 can read and write everything, and URLs can end up in logs. To revoke it, rotate `MCP_TOKEN`
 in Vercel and edit the connector. Any other client that cannot send headers can use the same URL.
 
-### Tools (42)
+### Tools (51)
 
 | Family | Read | Write | Destructive (confirmed by the in-app assistant) |
 | --- | --- | --- | --- |
@@ -278,6 +288,12 @@ in Vercel and edit the connector. Any other client that cannot send headers can 
 | Career | `list_applications` | `add_application`, `update_application` | `archive_application` |
 | Plan | `get_day_plan` | `plan_day`, `add_block`, `complete_block`, `add_routine` | `remove_routine` |
 | Money | `get_money_summary` | `log_expense`, `log_income`, `add_bill`, `pay_bill`, `set_account` | `delete_transaction` |
+| Diet plan | `get_diet_plan` | `add_diet_plan`, `update_diet_plan`, `add_diet_meal`, `update_diet_meal`, `add_diet_meal_option`, `update_diet_meal_option`, `remove_diet_meal_option`, `reorder_diet_meals` | — |
+
+The diet tools change what the user *plans* to eat; they never write a food log, and `log_food`
+never changes the plan. `remove_diet_meal_option` disables an option rather than deleting it, so
+nothing in that family is destructive. Meals and options can be named instead of identified by id
+("remove paneer from dinner").
 
 Every tool returns a one-line human summary and the same data as structured JSON. `get_today` is
 the one to start with: goals with progress, today's totals, plan, tasks, timer, money and the next

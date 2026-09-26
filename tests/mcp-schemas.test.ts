@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  addDietMealOptionInput,
   addGoalInput,
   addNoteInput,
   completeGoalInput,
@@ -9,7 +10,10 @@ import {
   logWaterInput,
   logWeightInput,
   logWorkoutInput,
+  removeDietMealOptionInput,
   removeGoalInput,
+  reorderDietMealsInput,
+  updateDietMealInput,
   updateGoalInput,
 } from "@/mcp/schemas";
 
@@ -120,5 +124,36 @@ describe("MCP input validation", () => {
   it("strips surrounding whitespace from text fields", () => {
     expect(addNoteInput.parse({ note: "  felt strong  " }).note).toBe("felt strong");
     expect(addNoteInput.safeParse({ note: "   " }).success).toBe(false);
+  });
+
+  it("identifies diet meals and options by id or by name, never neither", () => {
+    expect(updateDietMealInput.safeParse({ name: "Brunch" }).success).toBe(false);
+    expect(updateDietMealInput.safeParse({ meal: "Breakfast", name: "Brunch" }).success).toBe(true);
+    expect(updateDietMealInput.safeParse({ mealId: VALID_UUID, active: false }).success).toBe(true);
+
+    expect(removeDietMealOptionInput.safeParse({ meal: "Dinner" }).success).toBe(false);
+    expect(removeDietMealOptionInput.safeParse({ option: "Paneer bhurji" }).success).toBe(true);
+  });
+
+  it("keeps diet ingredients as short plain lines and macros sane", () => {
+    const parsed = addDietMealOptionInput.parse({
+      meal: "Dinner",
+      name: "Egg bhurji",
+      ingredients: ["  4 eggs  ", "3-4 roti"],
+    });
+    expect(parsed.ingredients).toEqual(["4 eggs", "3-4 roti"]);
+    expect(parsed.calories).toBeUndefined();
+
+    const bad = addDietMealOptionInput.safeParse({
+      meal: "Dinner",
+      name: "x",
+      calories: 999_999,
+    });
+    expect(bad.success).toBe(false);
+  });
+
+  it("requires at least one meal when reordering", () => {
+    expect(reorderDietMealsInput.safeParse({ meals: [] }).success).toBe(false);
+    expect(reorderDietMealsInput.safeParse({ meals: ["Breakfast", "Lunch"] }).success).toBe(true);
   });
 });

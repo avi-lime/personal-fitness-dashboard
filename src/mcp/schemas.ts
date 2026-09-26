@@ -14,6 +14,7 @@ import {
   dateRangeSchema,
   goalPeriodSchema,
   goalTypeSchema,
+  ingredientsSchema,
   isoTimestampSchema,
   kilogramsSchema,
   localDateSchema,
@@ -416,4 +417,137 @@ export const getMoneySummaryInput = z.object({});
 
 export const deleteTransactionInput = z.object({
   transactionId: uuidSchema.describe("From get_money_summary's recent list."),
+});
+
+// --- Diet plan -------------------------------------------------------------
+
+const mealRef = z
+  .string()
+  .trim()
+  .min(1)
+  .max(60)
+  .describe('The meal\'s name, e.g. "Dinner". Matched loosely against the plan.');
+
+const optionRef = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .describe('The option\'s name, e.g. "Paneer bhurji". Matched loosely within the meal.');
+
+const ingredientsArg = ingredientsSchema
+  .describe('Plain lines with the quantities the user thinks in, e.g. ["4 eggs", "3-4 roti"].')
+  .optional();
+
+export const getDietPlanInput = z.object({
+  planId: uuidSchema.describe("Defaults to the active plan.").optional(),
+  includeInactive: z
+    .boolean()
+    .describe("Also return meals and options that were disabled. Defaults to false.")
+    .optional(),
+});
+
+export const addDietPlanInput = z.object({
+  name: z.string().trim().min(1).max(80),
+  goal: z.string().trim().max(200).optional(),
+  calorieTarget: caloriesSchema.optional(),
+  proteinTarget: macroSchema.optional(),
+  carbsTarget: macroSchema.optional(),
+  fatTarget: macroSchema.optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+export const updateDietPlanInput = z.object({
+  planId: uuidSchema.describe("Defaults to the active plan.").optional(),
+  name: z.string().trim().min(1).max(80).optional(),
+  goal: z.string().trim().max(200).optional(),
+  calorieTarget: caloriesSchema.optional(),
+  proteinTarget: macroSchema.optional(),
+  carbsTarget: macroSchema.optional(),
+  fatTarget: macroSchema.optional(),
+  notes: z.string().trim().max(1000).optional(),
+  active: z.boolean().describe("Set true to make this the plan in use.").optional(),
+});
+
+export const addDietMealInput = z.object({
+  planId: uuidSchema.describe("Defaults to the active plan.").optional(),
+  name: z.string().trim().min(1).max(60).describe('e.g. "Afternoon snack".'),
+  recommendedTime: z.string().trim().max(40).describe('Free text, e.g. "16:30-17:00".').optional(),
+  mealType: mealTypeSchema
+    .describe("Which food-log bucket this meal belongs to: breakfast | lunch | dinner | snack | other.")
+    .optional(),
+  calorieTarget: caloriesSchema.optional(),
+  proteinTarget: macroSchema.optional(),
+  notes: z.string().trim().max(500).optional(),
+});
+
+export const updateDietMealInput = z
+  .object({
+    mealId: uuidSchema.optional(),
+    meal: mealRef.optional(),
+    name: z.string().trim().min(1).max(60).optional(),
+    recommendedTime: z.string().trim().max(40).optional(),
+    mealType: mealTypeSchema.optional(),
+    calorieTarget: caloriesSchema.optional(),
+    proteinTarget: macroSchema.optional(),
+    notes: z.string().trim().max(500).optional(),
+    active: z.boolean().describe("Set false to drop the meal from the plan.").optional(),
+  })
+  .refine((v) => v.mealId || v.meal, { message: "Give a mealId or a meal name", path: ["meal"] });
+
+export const addDietMealOptionInput = z
+  .object({
+    mealId: uuidSchema.optional(),
+    meal: mealRef.optional(),
+    name: z.string().trim().min(1).max(80),
+    description: z.string().trim().max(500).optional(),
+    ingredients: ingredientsArg,
+    calories: caloriesSchema.describe("Planning estimate for the whole option.").optional(),
+    proteinG: macroSchema.optional(),
+    carbsG: macroSchema.optional(),
+    fatG: macroSchema.optional(),
+    notes: z.string().trim().max(500).optional(),
+    isDefault: z.boolean().describe("Make this the usual choice for the meal.").optional(),
+  })
+  .refine((v) => v.mealId || v.meal, { message: "Give a mealId or a meal name", path: ["meal"] });
+
+export const updateDietMealOptionInput = z
+  .object({
+    optionId: uuidSchema.optional(),
+    option: optionRef.optional(),
+    meal: mealRef.describe("Narrows the search when identifying the option by name.").optional(),
+    name: z.string().trim().min(1).max(80).optional(),
+    description: z.string().trim().max(500).optional(),
+    ingredients: ingredientsArg,
+    calories: caloriesSchema.optional(),
+    proteinG: macroSchema.optional(),
+    carbsG: macroSchema.optional(),
+    fatG: macroSchema.optional(),
+    notes: z.string().trim().max(500).optional(),
+    isDefault: z.boolean().optional(),
+    active: z.boolean().describe("Set false to disable, true to bring it back.").optional(),
+  })
+  .refine((v) => v.optionId || v.option, {
+    message: "Give an optionId or an option name",
+    path: ["option"],
+  });
+
+export const removeDietMealOptionInput = z
+  .object({
+    optionId: uuidSchema.optional(),
+    option: optionRef.optional(),
+    meal: mealRef.describe("Narrows the search when identifying the option by name.").optional(),
+    restore: z.boolean().describe("Set true to bring a disabled option back.").optional(),
+  })
+  .refine((v) => v.optionId || v.option, {
+    message: "Give an optionId or an option name",
+    path: ["option"],
+  });
+
+export const reorderDietMealsInput = z.object({
+  planId: uuidSchema.describe("Defaults to the active plan.").optional(),
+  meals: z
+    .array(mealRef)
+    .min(1)
+    .describe('Meal names or ids in the order they should appear, e.g. ["Breakfast","Lunch","Dinner"].'),
 });

@@ -418,3 +418,60 @@ export const billInputSchema = z.object({
   notes: z.string().trim().max(500).nullish(),
 });
 export type BillInput = z.infer<typeof billInputSchema>;
+
+// --- Diet plan -------------------------------------------------------------
+
+/** Free-text quantities the user thinks in ("70-80g oats"), not parsed amounts. */
+export const ingredientsSchema = z.array(z.string().trim().min(1).max(120)).max(40);
+
+export const dietPlanInputSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(80),
+  goal: z.string().trim().max(200).nullish(),
+  calorieTarget: caloriesSchema.nullish(),
+  proteinTarget: macroSchema.nullish(),
+  carbsTarget: macroSchema.nullish(),
+  fatTarget: macroSchema.nullish(),
+  notes: z.string().trim().max(1000).nullish(),
+});
+export type DietPlanInput = z.infer<typeof dietPlanInputSchema>;
+
+export const dietPlanUpdateSchema = dietPlanInputSchema
+  .partial()
+  .extend({ active: z.boolean().optional() });
+export type DietPlanUpdate = z.infer<typeof dietPlanUpdateSchema>;
+
+export const dietMealInputSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(60),
+  recommendedTime: z.string().trim().max(40).nullish(),
+  mealType: mealTypeSchema.default("other"),
+  calorieTarget: caloriesSchema.nullish(),
+  proteinTarget: macroSchema.nullish(),
+  notes: z.string().trim().max(500).nullish(),
+  /** Position in the day; appended to the end when omitted. */
+  sortOrder: z.number().int().min(0).max(999).nullish(),
+});
+export type DietMealInput = z.infer<typeof dietMealInputSchema>;
+
+export const dietMealUpdateSchema = dietMealInputSchema
+  .partial()
+  .extend({ active: z.boolean().optional() });
+export type DietMealUpdate = z.infer<typeof dietMealUpdateSchema>;
+
+export const dietMealOptionInputSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(80),
+  description: z.string().trim().max(500).nullish(),
+  ingredients: ingredientsSchema.default([]),
+  calories: caloriesSchema.nullish(),
+  proteinG: macroSchema.nullish(),
+  carbsG: macroSchema.nullish(),
+  fatG: macroSchema.nullish(),
+  notes: z.string().trim().max(500).nullish(),
+  /** The usual choice for this meal; the others are alternatives. */
+  isDefault: z.boolean().default(false),
+});
+export type DietMealOptionInput = z.infer<typeof dietMealOptionInputSchema>;
+
+export const dietMealOptionUpdateSchema = dietMealOptionInputSchema
+  .partial()
+  .extend({ active: z.boolean().optional() });
+export type DietMealOptionUpdate = z.infer<typeof dietMealOptionUpdateSchema>;

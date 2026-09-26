@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import postgres from "postgres";
 import * as schema from "../src/db/schema";
 import { addDays, toLocalDate } from "../src/lib/date";
+import { seedDietPlan } from "./diet-plan-seed";
 
 config({ path: ".env.local", quiet: true });
 config({ path: ".env", quiet: true });
@@ -284,6 +285,10 @@ async function main() {
       { userId: user.id, label: "Study", kind: "study" as const, area: "study" as const, startTime: "20:00", endTime: "21:00", weekdays: 127 },
     ]);
   }
+
+  // The diet plan is recommendations, not events, so it survives a re-seed.
+  const dietPlan = await seedDietPlan(db, user.id);
+  if (dietPlan) console.log(`Created diet plan "${dietPlan}".`);
 
   await db.insert(schema.applications).values([
     { userId: user.id, company: "Acme", role: "Senior Engineer", stage: "interview" as const, nextStep: "System design round", nextStepDate: addDays(today, 2), appliedOn: addDays(today, -10), source: "seed" as const },

@@ -7,11 +7,14 @@ import { TOOLS, toOpenAiTools, toolByName } from "@/mcp/registry";
  */
 describe("tool registry", () => {
   it("exposes the expected tools with unique names", () => {
-    expect(TOOLS.length).toBe(42);
+    expect(TOOLS.length).toBe(51);
     const names = TOOLS.map((tool) => tool.name);
     expect(new Set(names).size).toBe(names.length);
     expect(toolByName.get("log_water")?.kind).toBe("write");
     expect(toolByName.get("get_today")?.kind).toBe("read");
+    expect(toolByName.get("get_diet_plan")?.kind).toBe("read");
+    // Plan edits are reversible, so none of them is destructive.
+    expect(toolByName.get("remove_diet_meal_option")?.kind).toBe("write");
   });
 
   it("marks exactly the destructive tools", () => {

@@ -208,6 +208,96 @@ export const mealTemplateItems = pgTable(
   (table) => [index("meal_template_items_template_idx").on(table.templateId, table.sortOrder)],
 );
 
+/**
+ * The diet plan: what the user *intends* to eat, as opposed to `foodLogs`,
+ * which is what they actually ate. Nothing here ever creates a food log — the
+ * two are only connected when the user explicitly logs a planned option.
+ *
+ * Targets live here as well as in `goals`. A goal is tracked and scored from
+ * logged entries; a plan target is the number the meals were designed around.
+ * They are allowed to differ, and the read tool returns both so the drift is
+ * visible instead of silently reconciled.
+ */
+export const dietPlans = pgTable(
+  "diet_plans",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** What the plan is for, in the user's words. */
+    goal: text("goal"),
+    calorieTarget: doublePrecision("calorie_target"),
+    proteinTarget: doublePrecision("protein_target"),
+    carbsTarget: doublePrecision("carbs_target"),
+    fatTarget: doublePrecision("fat_target"),
+    notes: text("notes"),
+    /** At most one plan is active per user; the service enforces it. */
+    active: boolean("active").notNull().default(true),
+    source: text("source").$type<EntrySource>().notNull().default("web"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("diet_plans_user_idx").on(table.userId, table.active)],
+);
+
+export const dietMeals = pgTable(
+  "diet_meals",
+  {
+    id: id(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => dietPlans.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    /** Free text, so "10:30-11:00" and "after the gym" are both allowed. */
+    recommendedTime: text("recommended_time"),
+    /** Which food-log bucket "log this meal" writes into. */
+    mealType: text("meal_type").$type<MealType>().notNull().default("other"),
+    calorieTarget: doublePrecision("calorie_target"),
+    proteinTarget: doublePrecision("protein_target"),
+    notes: text("notes"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("diet_meals_plan_idx").on(table.planId, table.sortOrder)],
+);
+
+/**
+ * One way to eat a meal. A meal keeps several, so "dinner" is a rotation
+ * rather than a single fixed dish; `isDefault` marks the usual one.
+ *
+ * Macros are planning estimates by definition — logging an option writes a
+ * food log with `estimated: true`.
+ */
+export const dietMealOptions = pgTable(
+  "diet_meal_options",
+  {
+    id: id(),
+    mealId: uuid("meal_id")
+      .notNull()
+      .references(() => dietMeals.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** Plain lines such as "70-80g oats" — quantities the user thinks in. */
+    ingredients: jsonb("ingredients").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    calories: doublePrecision("calories"),
+    proteinG: doublePrecision("protein_g"),
+    carbsG: doublePrecision("carbs_g"),
+    fatG: doublePrecision("fat_g"),
+    notes: text("notes"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isDefault: boolean("is_default").notNull().default(false),
+    /** Disabled options are kept so a removed option can come back. */
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("diet_meal_options_meal_idx").on(table.mealId, table.sortOrder)],
+);
+
 export const waterLogs = pgTable(
   "water_logs",
   {
@@ -620,6 +710,19 @@ export const mealTemplateItemsRelations = relations(mealTemplateItems, ({ one })
   }),
 }));
 
+export const dietPlansRelations = relations(dietPlans, ({ many }) => ({
+  meals: many(dietMeals),
+}));
+
+export const dietMealsRelations = relations(dietMeals, ({ many, one }) => ({
+  options: many(dietMealOptions),
+  plan: one(dietPlans, { fields: [dietMeals.planId], references: [dietPlans.id] }),
+}));
+
+export const dietMealOptionsRelations = relations(dietMealOptions, ({ one }) => ({
+  meal: one(dietMeals, { fields: [dietMealOptions.mealId], references: [dietMeals.id] }),
+}));
+
 export const workoutTemplatesRelations = relations(workoutTemplates, ({ many }) => ({
   exercises: many(workoutTemplateExercises),
 }));
@@ -651,3 +754,6 @@ export type TimeBlock = typeof timeBlocks.$inferSelect;
 export type MoneyAccount = typeof moneyAccounts.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type Bill = typeof bills.$inferSelect;
+export type DietPlan = typeof dietPlans.$inferSelect;
+export type DietMeal = typeof dietMeals.$inferSelect;
+export type DietMealOption = typeof dietMealOptions.$inferSelect;

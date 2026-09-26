@@ -5,7 +5,7 @@ import { profiles, users } from "@/db/schema";
 import type { McpContext } from "@/mcp/context";
 import { toolByName } from "@/mcp/registry";
 import { ToolFailure } from "@/mcp/tools/write";
-import { toLocalDate } from "@/lib/date";
+import { addDays, toLocalDate } from "@/lib/date";
 
 const hasDatabase = Boolean(process.env.DATABASE_URL);
 const suite = hasDatabase ? describe : describe.skip;
@@ -38,7 +38,10 @@ suite("task and time tools", () => {
   });
 
   it("adds, lists, completes and updates tasks by loose title", async () => {
-    await call("add_task", alice, { title: "Update resume", area: "career", dueDate: "2026-09-20" });
+    // Relative to the run date: a fixed due date silently becomes overdue and
+    // changes the summary once that day passes.
+    const due = addDays(alice.today, 5);
+    await call("add_task", alice, { title: "Update resume", area: "career", dueDate: due });
     await call("add_task", alice, { title: "Renew passport", priority: "high" });
 
     const listed = await call("list_tasks", alice, {});
@@ -47,7 +50,10 @@ suite("task and time tools", () => {
     const done = await call("complete_task", alice, { title: "resume" });
     expect(done.summary).toBe('Completed "Update resume".');
 
-    const updated = await call("update_task", alice, { match: "passport", dueDate: "2026-10-01" });
+    const updated = await call("update_task", alice, {
+      match: "passport",
+      dueDate: addDays(alice.today, 10),
+    });
     expect(updated.summary).toBe('Updated dueDate on "Renew passport".');
 
     const open = await call("list_tasks", alice, {});
