@@ -5,24 +5,25 @@
  * only ever adds one plan and its meals, and does nothing at all if the user
  * already has a diet plan, so running it twice never duplicates anything.
  *
- * Usage:  npm run db:seed:diet
- *         DATABASE_URL=<neon url> npm run db:seed:diet   (a real deployment)
- *         SEED_USERNAME=someone    npm run db:seed:diet
+ * Usage:  npm run db:seed:diet         (local)
+ *         npm run db:seed:diet:prod    (the deployed database)
+ *         SEED_USERNAME=someone npm run db:seed:diet
  */
 import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { eq } from "drizzle-orm";
 import postgres from "postgres";
 import * as schema from "../src/db/schema";
+import { targetDatabase } from "./target-database";
 import { seedDietPlan } from "./diet-plan-seed";
 
 config({ path: ".env.local", quiet: true });
 config({ path: ".env", quiet: true });
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set");
+  const { url, label } = targetDatabase(process.argv);
   const username = process.env.SEED_USERNAME ?? process.env.AUTH_USERNAME ?? "owner";
+  console.log(`Seeding the diet plan into ${label} for "${username}"…`);
 
   const sql = postgres(url, { max: 1 });
   const db = drizzle(sql, { schema });
