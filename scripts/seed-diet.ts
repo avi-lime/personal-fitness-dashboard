@@ -5,27 +5,27 @@
  * only ever adds one plan and its meals, and does nothing at all if the user
  * already has a diet plan, so running it twice never duplicates anything.
  *
- * Usage:  npm run db:seed:diet         (local)
- *         npm run db:seed:diet:prod    (the deployed database)
- *         SEED_USERNAME=someone npm run db:seed:diet
+ * Usage:  npm run db:seed:diet         (local, SEED_USERNAME or "owner")
+ *         npm run db:seed:diet:prod    (deployed, PRODUCTION_SEED_USERNAME)
  */
 import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { eq } from "drizzle-orm";
 import postgres from "postgres";
 import * as schema from "../src/db/schema";
-import { targetDatabase } from "./target-database";
+import { seedUsername, targetDatabase } from "./target-database";
 import { seedDietPlan } from "./diet-plan-seed";
 
 config({ path: ".env.local", quiet: true });
 config({ path: ".env", quiet: true });
 
 async function main() {
-  const { url, label } = targetDatabase(process.argv);
-  const username = process.env.SEED_USERNAME ?? process.env.AUTH_USERNAME ?? "owner";
+  const { url, label, production } = targetDatabase(process.argv);
+  const username = seedUsername(production);
   console.log(`Seeding the diet plan into ${label} for "${username}"…`);
 
-  const sql = postgres(url, { max: 1 });
+  // Neon can be cold; the default connect timeout is too eager for it.
+  const sql = postgres(url, { max: 1, connect_timeout: 30 });
   const db = drizzle(sql, { schema });
 
   try {

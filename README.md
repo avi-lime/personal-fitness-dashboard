@@ -83,11 +83,15 @@ routines, applications and money so every page has something to show. Rows it wr
 `source: "seed"` and refuse to load in production.
 
 `npm run db:seed:diet` is separate and **safe against a real deployment**: it writes the starting
-diet plan (`src/lib/diet-seed.ts`) once and does nothing at all if the user already has one, so it
-can be run against Neon to populate `/diet` without touching anything else:
+diet plan (`src/lib/diet-seed.ts`) once, inside one transaction, and does nothing at all if the
+user already has one.
+
+To run maintenance against the deployed database, set `PRODUCTION_DATABASE_URL` and
+`PRODUCTION_SEED_USERNAME` in `.env.local` (see `.env.example`) and add `--production`, which the
+`:prod` scripts do for you. Each prints which database it is about to touch:
 
 ```bash
-DATABASE_URL="<neon pooled url>" npm run db:seed:diet
+npm run db:migrate:prod && npm run db:seed:diet:prod
 ```
 
 ## Environment variables
@@ -198,6 +202,8 @@ npm test               # Vitest (single run)
 npm run test:watch
 npm run db:seed        # development-only sample data
 npm run db:seed:diet   # the starting diet plan, once; safe on a real deployment
+npm run db:migrate:prod     # migrate the deployed database (PRODUCTION_DATABASE_URL)
+npm run db:seed:diet:prod   # seed the diet plan into the deployed database
 npm run assistant:smoke -- "…"   # one assistant request from the terminal
 ```
 
