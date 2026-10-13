@@ -19,15 +19,17 @@ import Link from "next/link";
 import { requireContext } from "@/server/auth";
 import { getTodaySnapshot } from "@/server/services/today";
 import { getDietPlan } from "@/server/services/diet";
+import { getTrainingSnapshot } from "@/server/services/training";
 import { previousPerformance, type PreviousPerformance } from "@/server/services/workouts";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const { user, timezone, profile, sections } = await requireContext();
-  const [snapshot, diet] = await Promise.all([
+  const [snapshot, diet, training] = await Promise.all([
     getTodaySnapshot(user.id, timezone),
     sections.diet ? getDietPlan(user.id) : null,
+    sections.training ? getTrainingSnapshot(user.id, timezone) : null,
   ]);
 
   const dashboardGoals = snapshot.goals.filter((goal) => goal.active && goal.visibleOnDashboard);
@@ -141,7 +143,21 @@ export default async function DashboardPage() {
           ) : null}
 
           {sections.training ? (
-            <TrainingCard workout={workout} previousByExercise={previousByExercise} />
+            <TrainingCard
+              workout={workout}
+              previousByExercise={previousByExercise}
+              next={
+                training && !training.plan.restSuggested
+                  ? {
+                      label: training.plan.label,
+                      exercises: training.plan.exercises.length,
+                      minutes: training.plan.estimatedMinutes,
+                      reason: training.plan.reason,
+                    }
+                  : null
+              }
+              level={training ? { level: training.rpg.level.level, title: training.rpg.title } : null}
+            />
           ) : null}
 
           {sections.body ? (

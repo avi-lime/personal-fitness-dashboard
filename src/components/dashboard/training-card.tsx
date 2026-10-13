@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/empty-state";
 import { StartWorkoutButton } from "@/components/dashboard/start-workout-button";
+import { StartPlannedButton } from "@/components/training/start-planned-button";
 import { formatValue } from "@/lib/format";
 import { formatShortDate } from "@/lib/date";
 import { exerciseVolume, type PreviousPerformance, type WorkoutView } from "@/server/services/workouts";
@@ -11,18 +12,45 @@ import { exerciseVolume, type PreviousPerformance, type WorkoutView } from "@/se
 export interface TrainingCardData {
   workout: WorkoutView | null;
   previousByExercise: Record<string, PreviousPerformance | null>;
+  /** Today's planned session, offered when nothing has been logged yet. */
+  next?: { label: string; exercises: number; minutes: number; reason: string } | null;
+  level?: { level: number; title: string } | null;
 }
 
-export function TrainingCard({ workout, previousByExercise }: TrainingCardData) {
+export function TrainingCard({ workout, previousByExercise, next, level }: TrainingCardData) {
   if (!workout) {
     return (
-      <Card className="p-4">
-        <h2 className="mb-3 text-sm font-medium">Training</h2>
-        <EmptyState
-          title="No workout logged today"
-          description="Start one from a template or from scratch."
-          action={<StartWorkoutButton />}
-        />
+      <Card className="gap-3 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-medium">Training</h2>
+          <div className="flex items-center gap-2">
+            {level ? (
+              <span className="text-xs text-muted-foreground tabular">
+                Lv <span className="text-brand">{level.level}</span> {level.title}
+              </span>
+            ) : null}
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/training">Open</Link>
+            </Button>
+          </div>
+        </div>
+        {next ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-display text-2xl leading-tight">{next.label} day</p>
+              <p className="text-xs text-muted-foreground tabular">
+                {next.exercises} exercises · ~{next.minutes} min · {next.reason}
+              </p>
+            </div>
+            <StartPlannedButton label={`Start ${next.label.toLowerCase()} day`} />
+          </div>
+        ) : (
+          <EmptyState
+            title="No workout logged today"
+            description="Start one from a template or from scratch."
+            action={<StartWorkoutButton />}
+          />
+        )}
       </Card>
     );
   }
@@ -37,7 +65,9 @@ export function TrainingCard({ workout, previousByExercise }: TrainingCardData) 
           </Badge>
         </div>
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/training/${workout.id}`}>Open</Link>
+          <Link href={workout.completedAt ? `/training/${workout.id}` : `/training/session/${workout.id}`}>
+            {workout.completedAt ? "Open" : "Resume"}
+          </Link>
         </Button>
       </div>
 

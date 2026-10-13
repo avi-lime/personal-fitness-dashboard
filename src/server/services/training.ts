@@ -4,10 +4,16 @@ import { db } from "@/db";
 import { rpgLedger, trainingSettings, workoutExercises, workoutSets, workouts } from "@/db/schema";
 import type { EntrySource } from "@/lib/domain";
 import { localDayBounds, startOfWeek, toLocalDate, type LocalDate } from "@/lib/date";
-import { exerciseByKey, matchExercise, normaliseExerciseName, type EquipmentSetup } from "@/lib/fitness/exercises";
+import {
+  exerciseByKey,
+  matchExercise,
+  normaliseExerciseName,
+  resolveExercise,
+  type EquipmentSetup,
+} from "@/lib/fitness/exercises";
 import { resolveSets, type SetRecord } from "@/lib/fitness/history";
 import { MUSCLES } from "@/lib/fitness/muscles";
-import { findPersonalRecords, type PersonalRecord } from "@/lib/fitness/progression";
+import { findPersonalRecords, suggestSets, type PersonalRecord } from "@/lib/fitness/progression";
 import { planWorkout, type PlannedWorkout } from "@/lib/fitness/planner";
 import { PROGRAMS, isDayKey, type DayKey, type ProgramKey } from "@/lib/fitness/programs";
 import { attentionList, computeMuscleStatus, restList, type MuscleStatus } from "@/lib/fitness/status";
@@ -484,4 +490,58 @@ export function scoreLabel(record: PersonalRecord): string {
   if (record.kind === "time") return `${record.durationSeconds}s`;
   if (record.kind === "reps") return `${record.reps} reps`;
   return `${record.weightKg} kg × ${record.reps}`;
+}
+
+// --- The session screen ----------------------------------------------------
+
+export interface SessionExerciseMeta {
+  exerciseId: string;
+  key: string | null;
+  measure: "reps" | "time";
+  range: [number, number] | null;
+  restSeconds: number;
+  /** kg per tap of the weight stepper. */
+  step: number;
+  primary: string[];
+  rule: string | null;
+  last: { date: LocalDate; sets: Array<{ reps: number | null; weightKg: number | null; durationSeconds: number | null }> } | null;
+}
+
+/**
+ * What the session screen needs beside the workout itself: rest time, rep
+ * range and the last time each exercise was done — matched by what the
+ * exercise *is*, so an old "Bench" and a new "Bench press" count as one.
+ */
+export async function sessionMeta(userId: string, workout: WorkoutView): Promise<SessionExerciseMeta[]> {
+  const history = resolveSets(await loadSetRecords(userId)).filter((set) => set.workoutId !== workout.id);
+  const last = new Map<string, { workoutId: string; date: LocalDate; sets: typeof history }>();
+  for (const set of history) {
+    if (set.date > workout.date) continue;
+    const entry = last.get(set.identity);
+    if (!entry || entry.workoutId !== set.workoutId) last.set(set.identity, { workoutId: set.workoutId, date: set.date, sets: [set] });
+    else entry.sets.push(set);
+  }
+
+  return workout.exercises.map((exercise) => {
+    const resolved = resolveExercise({ exerciseKey: exercise.exerciseKey, name: exercise.name, muscleGroup: exercise.muscleGroup });
+    const def = resolved.def;
+    const identity = def?.key ?? `custom:${exercise.name.trim().toLowerCase()}`;
+    const previous = last.get(identity) ?? null;
+    return {
+      exerciseId: exercise.id,
+      key: def?.key ?? null,
+      measure: def?.measure ?? "reps",
+      range: def?.range ?? null,
+      restSeconds: def?.restSeconds ?? 90,
+      step: def && def.increment > 0 ? def.increment : 2.5,
+      primary: resolved.primary,
+      rule: def ? suggestSets(def, Math.max(1, exercise.sets.length), previous?.sets ?? []).rule : null,
+      last: previous
+        ? {
+            date: previous.date,
+            sets: previous.sets.map((set) => ({ reps: set.reps, weightKg: set.weightKg, durationSeconds: set.durationSeconds })),
+          }
+        : null,
+    };
+  });
 }

@@ -207,3 +207,14 @@
     transition-duration: 0.01ms !important;
   }
 }
+/* "+10 XP" drifting up off a completed set. */
+@keyframes xp-float {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-1.75rem);
+  }
+}

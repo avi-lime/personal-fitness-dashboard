@@ -24,6 +24,8 @@ export function MobileNav() {
   const pathname = usePathname();
   const { open } = useLogDialogs();
   const { supported } = useSpeechRecognition(() => {});
+  // A session is full-screen: the rest timer owns the bottom of the screen.
+  const hidden = pathname.startsWith("/training/session");
   const left = MOBILE_TABS.slice(0, 2);
   const right = MOBILE_TABS.slice(2);
 
@@ -45,6 +47,8 @@ export function MobileNav() {
       </li>
     );
   };
+
+  if (hidden) return null;
 
   return (
     <nav

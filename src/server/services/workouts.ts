@@ -12,6 +12,7 @@ import type { Workout } from "@/db/schema";
 import type { EntrySource } from "@/lib/domain";
 import { toLocalDate, type LocalDate } from "@/lib/date";
 import { round } from "@/lib/goals";
+import { matchExercise } from "@/lib/fitness/exercises";
 
 export interface WorkoutSetView {
   id: string;
@@ -26,6 +27,8 @@ export interface WorkoutSetView {
 export interface WorkoutExerciseView {
   id: string;
   name: string;
+  /** Library entry, when the exercise is one the app knows. */
+  exerciseKey: string | null;
   muscleGroup: string | null;
   sortOrder: number;
   sets: WorkoutSetView[];
@@ -94,6 +97,7 @@ async function hydrate(rows: Workout[]): Promise<WorkoutView[]> {
     list.push({
       id: exercise.id,
       name: exercise.name,
+      exerciseKey: exercise.exerciseKey,
       muscleGroup: exercise.muscleGroup,
       sortOrder: exercise.sortOrder,
       sets: setsByExercise.get(exercise.id) ?? [],
@@ -178,6 +182,7 @@ export async function createWorkout(
             .values({
               workoutId: created.id,
               name: exercise.name,
+              exerciseKey: exercise.exerciseKey,
               muscleGroup: exercise.muscleGroup,
               sortOrder: exercise.sortOrder,
             })
@@ -271,7 +276,13 @@ export async function addExercise(
     .where(eq(workoutExercises.workoutId, workoutId));
   const [created] = await db
     .insert(workoutExercises)
-    .values({ workoutId, name, muscleGroup: muscleGroup ?? null, sortOrder: count })
+    .values({
+      workoutId,
+      name,
+      exerciseKey: matchExercise(name)?.key ?? null,
+      muscleGroup: muscleGroup ?? null,
+      sortOrder: count,
+    })
     .returning({ id: workoutExercises.id });
   return created.id;
 }
@@ -436,6 +447,7 @@ export async function saveWorkoutAsTemplate(
         workout.exercises.map((exercise, index) => ({
           templateId: template.id,
           name: exercise.name,
+          exerciseKey: exercise.exerciseKey,
           muscleGroup: exercise.muscleGroup,
           sortOrder: index,
           targetSets: Math.max(1, exercise.sets.length),

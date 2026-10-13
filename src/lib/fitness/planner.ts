@@ -80,10 +80,12 @@ function chooseDay(input: PlannerInput, statuses: ReadonlyMap<Muscle, MuscleStat
 
   const lastIndex = input.lastDay ? days.findIndex((day) => day.key === input.lastDay) : -1;
   const next = days[(lastIndex + 1) % days.length];
-  const afterWhat = lastIndex >= 0 ? `after ${days[lastIndex].label}` : "to start the rotation";
-
   if (readiness(next, statuses) >= 0.5) {
-    return { day: next, reason: `${next.label} is next in the rotation, ${afterWhat}.`, rest: false };
+    const reason =
+      lastIndex >= 0
+        ? `${next.label} is next in the rotation, after ${days[lastIndex].label}.`
+        : `${next.label} starts the rotation.`;
+    return { day: next, reason, rest: false };
   }
   // Ties go to whichever day comes soonest in the rotation, so the day just
   // trained is the last resort rather than the first.

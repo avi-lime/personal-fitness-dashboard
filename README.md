@@ -45,10 +45,12 @@ Change the goals and the dashboard, checklist, weekly review and assistant follo
 | **Career** (`/career`) | Applications by stage (wishlist → applied → screening → interview → offer / rejected) with next steps and dates; prep time this week. |
 | **Money** (`/money`) | Manual ledger: expenses by category, income, accounts (bank, cash, wallet, credit card with limit and due day), bills and pending payments; spend today / week / month. Balances update with every entry. |
 | **Diet** (`/diet`) | The plan: daily calorie/protein targets and the meals of a day, each with a default option and alternatives (dinner is a rotation, not one dish). Editable here or by the assistant. "Log this" is the only thing that writes a food log. |
-| **Food / Training / Body / History / Review** | Unchanged from the fitness core: food log with reusable foods and meal templates, workouts with sets and templates, weight/sleep/water, history charts, weekly review. |
+| **Training** (`/training`) | A Push/Pull/Legs or Push/Pull rotation that plans each session from your history: the next day (skipping ahead if its muscles are still recovering), the lift you've been doing in each slot, an extra set for a lagging muscle and one fewer for a tired one, and loads by double progression — each choice with the sentence that explains it. A set-by-set session screen with steppers, an auto-starting rest timer that survives a refresh, and PRs called out as they happen. A front/back body map shows each of 16 muscles as recovering, ready, due or neglected, with weekly sets against a target. |
+| **The game** (`/training` → Quests) | XP for sets, finished sessions and PRs; a level and title; a level per muscle; daily and weekly missions (train today, hit protein, give your most neglected muscle three sets, train every group this week…) that pay XP and gold once; achievements; and a reward shop where you price real-life treats in gold. Training XP is recomputed from your sets, so it can't drift or be farmed. |
+| **Food / Body / History / Review** | Unchanged from the fitness core: food log with reusable foods and meal templates, workouts with sets and templates, weight/sleep/water, history charts, weekly review. |
 | **Monitor mode** (`/monitor`) | Second-screen view: large clock, next action, goal progress, plan, tasks, money, training, weight, weekly trend. Refreshes every minute. |
 | **Assistant** | `Ctrl`/`Cmd` + `K`, or the microphone in the centre of the phone tab bar: type or dictate. Recognised quick commands (`+500 ml water`, `weigh 50.4 kg`) run instantly with no model; anything else goes to the assistant, which calls the same tools and answers in a sentence. Destructive requests ask for confirmation. |
-| **MCP** (`/api/mcp`) | 51 narrowly scoped tools behind bearer-token auth, with an audit row per mutation. |
+| **MCP** (`/api/mcp`) | 59 narrowly scoped tools behind bearer-token auth, with an audit row per mutation. |
 
 ## Stack
 
@@ -284,7 +286,7 @@ records these calls with channel `chatgpt`. **Treat the URL as a secret** — an
 can read and write everything, and URLs can end up in logs. To revoke it, rotate `MCP_TOKEN`
 in Vercel and edit the connector. Any other client that cannot send headers can use the same URL.
 
-### Tools (51)
+### Tools (59)
 
 | Family | Read | Write | Destructive (confirmed by the in-app assistant) |
 | --- | --- | --- | --- |
@@ -294,6 +296,7 @@ in Vercel and edit the connector. Any other client that cannot send headers can 
 | Career | `list_applications` | `add_application`, `update_application` | `archive_application` |
 | Plan | `get_day_plan` | `plan_day`, `add_block`, `complete_block`, `add_routine` | `remove_routine` |
 | Money | `get_money_summary` | `log_expense`, `log_income`, `add_bill`, `pay_bill`, `set_account` | `delete_transaction` |
+| Training & game | `get_training_status`, `get_next_workout` | `start_workout`, `log_set`, `claim_mission`, `add_reward`, `redeem_reward`, `set_training_preferences` | — |
 | Diet plan | `get_diet_plan` | `add_diet_plan`, `update_diet_plan`, `add_diet_meal`, `update_diet_meal`, `add_diet_meal_option`, `update_diet_meal_option`, `remove_diet_meal_option`, `reorder_diet_meals` | — |
 
 The diet tools change what the user *plans* to eat; they never write a food log, and `log_food`
