@@ -12,8 +12,13 @@ import { hoursBetween, toLocalDate, toLocalTime } from "@/lib/date";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Body · Life Dashboard" };
 
-export default async function BodyPage() {
+const BODY_TABS = ["weight", "sleep", "water"] as const;
+
+export default async function BodyPage({ searchParams }: PageProps<"/body">) {
   const { user, timezone, profile } = await requireContext();
+  const requested = (await searchParams).tab;
+  // Deep links such as the Today page's water ring open the right tab.
+  const tab = BODY_TABS.find((entry) => entry === requested) ?? "weight";
   const today = toLocalDate(new Date(), timezone);
 
   const [weights, sleep, water, goals] = await Promise.all([
@@ -38,7 +43,7 @@ export default async function BodyPage() {
         <p className="text-sm text-muted-foreground">Weight, sleep and hydration history.</p>
       </div>
 
-      <Tabs defaultValue="weight">
+      <Tabs defaultValue={tab}>
         <TabsList>
           <TabsTrigger value="weight">Weight</TabsTrigger>
           <TabsTrigger value="sleep">Sleep</TabsTrigger>

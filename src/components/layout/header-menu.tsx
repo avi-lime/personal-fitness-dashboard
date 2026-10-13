@@ -15,14 +15,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { logoutAction } from "@/server/actions/auth";
-import { NAV_ITEMS } from "./nav-items";
+import { SECONDARY_PAGES } from "./nav-items";
 
 /**
- * More: every page, then monitor, theme and sign-out, behind one trigger.
+ * More: the weekly pages, then monitor, theme and sign-out, behind one trigger.
  *
- * On a phone this is the only way to the pages the tab bar has no room for, so
- * the page list is part of the menu rather than a trip through Settings. On
- * desktop the header already shows the same links in a row, so the list hides.
+ * The phone's tab bar covers the hubs; Career, Goals and Review live here. On
+ * desktop the header already shows them in a row, so the list hides.
  */
 export function HeaderMenu() {
   const { theme, setTheme } = useTheme();
@@ -33,18 +32,15 @@ export function HeaderMenu() {
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
+      <DropdownMenuContent align="end" className="w-52">
         <div className="md:hidden">
-          <DropdownMenuLabel>Pages</DropdownMenuLabel>
-          <div className="grid grid-cols-2 gap-0.5">
-            {NAV_ITEMS.map((item) => (
-              <DropdownMenuItem key={item.href} asChild>
-                <Link href={item.href}>
-                  <item.icon className="size-4" /> {item.label}
-                </Link>
-              </DropdownMenuItem>
-            ))}
-          </div>
+          {SECONDARY_PAGES.map((page) => (
+            <DropdownMenuItem key={page.href} asChild>
+              <Link href={page.href}>
+                <page.icon className="size-4" /> {page.label}
+              </Link>
+            </DropdownMenuItem>
+          ))}
           <DropdownMenuSeparator />
         </div>
         <DropdownMenuItem asChild>

@@ -3,52 +3,47 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Mic } from "lucide-react";
-import { MOBILE_TABS, isActivePath } from "./nav-items";
+import { HUBS, hubFor, type Hub } from "./nav-items";
+import { useHubHref } from "./hub-memory";
 import { useLogDialogs } from "@/components/log/log-provider";
 import { useSpeechRecognition } from "@/components/assistant/use-speech-recognition";
 import { cn } from "@/lib/utils";
 
+function HubTab({ hub, active }: { hub: Hub; active: boolean }) {
+  const href = useHubHref(hub);
+  return (
+    <li>
+      <Link
+        href={href}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
+          active ? "text-foreground" : "text-muted-foreground",
+        )}
+      >
+        <hub.icon className={cn("size-5", active && "text-brand")} aria-hidden />
+        {hub.label}
+      </Link>
+    </li>
+  );
+}
+
 /**
- * Phone tab bar: Today · Food · mic · Tasks · Money.
+ * Phone tab bar: Today · Health · mic · Day · Money.
  *
- * The microphone is the raised centre action, so it never covers page controls
- * the way a floating button would, and it is the one control reachable with a
- * thumb from any page. Tapping it starts listening straight away — the dialog
- * deliberately does not focus its text field, so no keyboard appears.
- *
- * Four tabs, not five: the mic occupies the middle column of an odd grid so it
- * is exactly centred. Everything beyond these pages is behind More in the
- * header.
+ * Four hubs and the microphone in the middle column of five, so it sits dead
+ * centre. Each hub reopens on the page you last used in it. Tapping the mic
+ * starts listening straight away — the dialog deliberately does not focus its
+ * text field, so no keyboard appears.
  */
 export function MobileNav() {
   const pathname = usePathname();
   const { open } = useLogDialogs();
   const { supported } = useSpeechRecognition(() => {});
+  const current = hubFor(pathname)?.key ?? null;
+
   // A session is full-screen: the rest timer owns the bottom of the screen.
-  const hidden = pathname.startsWith("/training/session");
-  const left = MOBILE_TABS.slice(0, 2);
-  const right = MOBILE_TABS.slice(2);
-
-  const tab = (item: (typeof MOBILE_TABS)[number]) => {
-    const active = isActivePath(pathname, item.href);
-    return (
-      <li key={item.href}>
-        <Link
-          href={item.href}
-          aria-current={active ? "page" : undefined}
-          className={cn(
-            "flex h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
-            active ? "text-foreground" : "text-muted-foreground",
-          )}
-        >
-          <item.icon className={cn("size-5", active && "text-brand")} aria-hidden />
-          {item.label}
-        </Link>
-      </li>
-    );
-  };
-
-  if (hidden) return null;
+  if (pathname.startsWith("/training/session")) return null;
 
   return (
     <nav
@@ -57,7 +52,9 @@ export function MobileNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <ul className="grid grid-cols-5 items-end">
-        {left.map(tab)}
+        {HUBS.slice(0, 2).map((hub) => (
+          <HubTab key={hub.key} hub={hub} active={current === hub.key} />
+        ))}
         <li className="flex justify-center">
           <button
             type="button"
@@ -68,7 +65,9 @@ export function MobileNav() {
             <Mic className="size-6" aria-hidden />
           </button>
         </li>
-        {right.map(tab)}
+        {HUBS.slice(2).map((hub) => (
+          <HubTab key={hub.key} hub={hub} active={current === hub.key} />
+        ))}
       </ul>
     </nav>
   );

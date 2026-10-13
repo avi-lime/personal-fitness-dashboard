@@ -3,6 +3,7 @@ import { GoalCard } from "@/components/dashboard/goal-card";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { NutritionCard } from "@/components/dashboard/nutrition-card";
 import { DietCard } from "@/components/dashboard/diet-card";
+import { DayRings, type Ring } from "@/components/dashboard/day-rings";
 import { TrainingCard } from "@/components/dashboard/training-card";
 import { BodyCard } from "@/components/dashboard/body-card";
 import { WeekCard } from "@/components/dashboard/week-card";
@@ -45,6 +46,36 @@ export default async function DashboardPage() {
     )?.targetValue ?? null;
 
   const workout = snapshot.workouts[0] ?? null;
+
+  const trainedToday = training?.sessions.some((session) => session.date === snapshot.date && session.completed) ?? false;
+  const activeSets = training?.active
+    ? training.active.exercises.reduce(
+        (sum, exercise) => ({
+          done: sum.done + exercise.sets.filter((set) => set.completed).length,
+          all: sum.all + exercise.sets.length,
+        }),
+        { done: 0, all: 0 },
+      )
+    : null;
+  const rings: Ring[] = [
+    { key: "calories", label: "Calories", href: "/food", value: snapshot.facts.calories, target: dailyTarget("calories"), unit: "kcal" },
+    { key: "protein", label: "Protein", href: "/food", value: snapshot.facts.protein, target: dailyTarget("protein"), unit: "g" },
+    { key: "water", label: "Water", href: "/body?tab=water", value: snapshot.facts.waterMl / 1000, target: dailyTarget("water_ml"), unit: "L" },
+    trainedToday
+      ? { key: "train", label: "Train", href: "/training", value: 1, target: 1, unit: "", caption: "Done", center: "✓" }
+      : activeSets
+        ? { key: "train", label: "Train", href: `/training/session/${training!.active!.id}`, value: activeSets.done, target: Math.max(1, activeSets.all), unit: "sets" }
+        : {
+            key: "train",
+            label: "Train",
+            href: "/training",
+            value: 0,
+            target: 1,
+            unit: "",
+            caption: training?.plan.restSuggested ? "Rest day" : `${training?.plan.label ?? "Next"} day`,
+            center: training?.plan.restSuggested ? "Rest" : "Go",
+          },
+  ];
   const previousByExercise: Record<string, PreviousPerformance | null> = {};
   if (workout) {
     const results = await Promise.all(
@@ -60,6 +91,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-5">
       <h1 className="sr-only">Today</h1>
+      {sections.rings ? <DayRings rings={rings} /> : null}
       {sections.nextAction ? (
         <NextActionCard
           action={snapshot.nextAction}

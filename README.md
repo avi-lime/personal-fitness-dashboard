@@ -170,10 +170,15 @@ Google may use free-tier prompts for training; use a paid key or another provide
 ## Using it on a phone
 
 The same deployment is a PWA. Open it in Chrome (Android) or Safari (iOS) and choose **Add to
-Home Screen** — it installs as a standalone app. Phones get a tab bar of Today · Food · **mic** ·
-Tasks · Money — four tabs so the raised microphone sits dead centre in thumb reach — and the
-assistant box as a bottom sheet. Every other page is behind **More** (the `…` menu in the header),
-which also holds monitor mode, the theme and sign-out. Dictation on iOS needs a tap per utterance
+Home Screen** — it installs as a standalone app.
+
+Pages are grouped into four hubs by what you came to do: **Today**, **Health** (Train, Food, Diet,
+Body, History), **Day** (Plan, Tasks, Time) and **Money**. The phone's tab bar is those four with
+the microphone dead centre; each hub has a row of tabs for its pages and reopens on the one you
+used last. Career, Goals and Review are behind **More** (the `…` in the header) on a phone and in
+the header row on a desktop. Every dialog rises from the bottom as a sheet on a phone, within
+thumb reach, and the Today page opens with four rings — calories, protein, water, training — that
+answer "how am I doing?" at a glance. Dictation on iOS needs a tap per utterance
 (tap to start, speak, tap to stop or just pause).
 
 ## Database and migrations
