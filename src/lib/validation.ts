@@ -18,6 +18,8 @@ import {
 import { isLocalDate, isValidTimeZone } from "./date";
 import { METRICS } from "./metrics";
 import { WEEKDAYS, isHHMM } from "./plan";
+import { EQUIPMENT_SETUPS } from "./fitness/exercises";
+import { DAY_KEYS, PROGRAM_KEYS } from "./fitness/programs";
 
 /**
  * One set of schemas shared by the web server actions and the MCP tools, so
@@ -475,3 +477,29 @@ export const dietMealOptionUpdateSchema = dietMealOptionInputSchema
   .partial()
   .extend({ active: z.boolean().optional() });
 export type DietMealOptionUpdate = z.infer<typeof dietMealOptionUpdateSchema>;
+
+// --- Training & game -------------------------------------------------------
+
+export const programKeySchema = z.enum(PROGRAM_KEYS);
+export const dayKeySchema = z.enum(DAY_KEYS);
+export const equipmentSetupSchema = z.enum(EQUIPMENT_SETUPS);
+
+export const trainingPreferencesSchema = z.object({
+  program: programKeySchema,
+  equipment: equipmentSetupSchema,
+  daysPerWeek: z.number().int().min(1, "At least one day a week").max(7),
+});
+
+/** What was actually lifted. Every field optional: a timed hold has no reps. */
+export const setPerformanceSchema = z.object({
+  reps: z.number().int().min(0).max(1000).nullish(),
+  weightKg: bounded(1000, "Set weight").nullish(),
+  durationSeconds: z.number().int().min(0).max(86_400).nullish(),
+});
+
+export const rewardInputSchema = z.object({
+  name: z.string().trim().min(1, "Name the reward").max(80),
+  cost: z.number().int().min(1, "Costs at least 1 gold").max(100_000),
+  notes: z.string().trim().max(300).nullish(),
+});
+export type RewardInput = z.infer<typeof rewardInputSchema>;

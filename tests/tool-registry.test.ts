@@ -7,7 +7,7 @@ import { TOOLS, toOpenAiTools, toolByName } from "@/mcp/registry";
  */
 describe("tool registry", () => {
   it("exposes the expected tools with unique names", () => {
-    expect(TOOLS.length).toBe(51);
+    expect(TOOLS.length).toBe(59);
     const names = TOOLS.map((tool) => tool.name);
     expect(new Set(names).size).toBe(names.length);
     expect(toolByName.get("log_water")?.kind).toBe("write");

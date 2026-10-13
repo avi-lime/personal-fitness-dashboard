@@ -32,6 +32,8 @@ import type {
   Theme,
   UnitSystem,
 } from "@/lib/domain";
+import type { EquipmentSetup } from "@/lib/fitness/exercises";
+import type { DayKey, ProgramKey } from "@/lib/fitness/programs";
 
 /**
  * Measurements are stored as `double precision` rather than `numeric` so the
@@ -373,6 +375,7 @@ export const workoutTemplateExercises = pgTable(
       .notNull()
       .references(() => workoutTemplates.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    exerciseKey: text("exercise_key"),
     muscleGroup: text("muscle_group"),
     sortOrder: integer("sort_order").notNull().default(0),
     targetSets: integer("target_sets").notNull().default(3),
@@ -390,6 +393,8 @@ export const workouts = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     templateId: uuid("template_id").references(() => workoutTemplates.id, { onDelete: "set null" }),
     name: text("name").notNull(),
+    /** Which day of the training program this was ("push" …), if it followed one. */
+    programDay: text("program_day").$type<DayKey>(),
     localDate: date("local_date").notNull(),
     notes: text("notes"),
     completedAt: timestamp("completed_at", { withTimezone: true }),
@@ -408,6 +413,8 @@ export const workoutExercises = pgTable(
       .notNull()
       .references(() => workouts.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /** Library entry (`lib/fitness/exercises.ts`); null for a custom exercise. */
+    exerciseKey: text("exercise_key"),
     muscleGroup: text("muscle_group"),
     sortOrder: integer("sort_order").notNull().default(0),
   },
@@ -652,6 +659,69 @@ export const bills = pgTable(
   (table) => [index("bills_due_idx").on(table.userId, table.status, table.dueDate)],
 );
 
+/** How the user trains. One row per user, created on first save. */
+export const trainingSettings = pgTable("training_settings", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  program: text("program").$type<ProgramKey>().notNull().default("ppl"),
+  equipment: text("equipment").$type<EquipmentSetup>().notNull().default("gym"),
+  /** Sessions a week the user is aiming for; drives the weekly mission. */
+  daysPerWeek: integer("days_per_week").notNull().default(4),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * Things in the game that happen exactly once: a mission claimed, a reward
+ * bought. Training XP is *not* here — it is recomputed from sets — so this
+ * ledger only ever holds events that history alone cannot reproduce.
+ */
+export const rpgLedger = pgTable(
+  "rpg_ledger",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<"mission" | "redeem">().notNull(),
+    /** Mission key, or the reward id for a redemption. */
+    key: text("key").notNull(),
+    /** The mission's day or week; the purchase time for a redemption. */
+    period: text("period").notNull(),
+    xp: integer("xp").notNull().default(0),
+    /** Positive when earned, negative when spent. */
+    gold: integer("gold").notNull().default(0),
+    label: text("label").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("rpg_ledger_user_idx").on(table.userId, table.createdAt),
+    // A mission pays out once per period, however many times "claim" is pressed.
+    uniqueIndex("rpg_ledger_mission_once_idx")
+      .on(table.userId, table.key, table.period)
+      .where(sql`${table.kind} = 'mission'`),
+  ],
+);
+
+/** Real-life rewards the user sets a gold price on and buys with what they earn. */
+export const rpgRewards = pgTable(
+  "rpg_rewards",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    cost: integer("cost").notNull(),
+    notes: text("notes"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("rpg_rewards_user_idx").on(table.userId, table.active)],
+);
+
 /** Append-only audit trail for every mutation made through a tool. */
 export const mcpAuditLog = pgTable(
   "mcp_audit_log",
@@ -757,3 +827,6 @@ export type Bill = typeof bills.$inferSelect;
 export type DietPlan = typeof dietPlans.$inferSelect;
 export type DietMeal = typeof dietMeals.$inferSelect;
 export type DietMealOption = typeof dietMealOptions.$inferSelect;
+export type TrainingSettings = typeof trainingSettings.$inferSelect;
+export type RpgLedgerEntry = typeof rpgLedger.$inferSelect;
+export type RpgReward = typeof rpgRewards.$inferSelect;

@@ -7,6 +7,7 @@ import { careerTools } from "./tools/career";
 import { planTools } from "./tools/plan";
 import { moneyTools } from "./tools/money";
 import { dietTools } from "./tools/diet";
+import { trainingTools } from "./tools/training";
 
 /**
  * The single source of truth for every tool the app exposes.
@@ -50,6 +51,7 @@ export const TOOLS: readonly AnyTool[] = [
   ...planTools,
   ...moneyTools,
   ...dietTools,
+  ...trainingTools,
 ];
 
 export const toolByName: ReadonlyMap<string, AnyTool> = new Map(

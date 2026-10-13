@@ -9,6 +9,9 @@ import {
   expenseCategorySchema,
   blockKindSchema,
   caloriesSchema,
+  dayKeySchema,
+  equipmentSetupSchema,
+  programKeySchema,
   hhmmSchema,
   weekdaySchema,
   dateRangeSchema,
@@ -550,4 +553,59 @@ export const reorderDietMealsInput = z.object({
     .array(mealRef)
     .min(1)
     .describe('Meal names or ids in the order they should appear, e.g. ["Breakfast","Lunch","Dinner"].'),
+});
+
+// --- Training & game -------------------------------------------------------
+
+const bounded1000 = z.number().finite().min(0).max(1000);
+
+const dayArg = dayKeySchema
+  .describe("push | pull | legs. Omit to let the planner choose the best day.")
+  .optional();
+
+export const getNextWorkoutInput = z.object({ day: dayArg });
+export const startWorkoutInput = z.object({ day: dayArg });
+
+export const logSetInput = z
+  .object({
+    exercise: z
+      .string()
+      .trim()
+      .min(1)
+      .max(80)
+      .describe('Exercise name as the user says it, e.g. "bench", "db rows", "pull-ups".'),
+    weightKg: bounded1000.describe("Weight lifted in kg. Omit for bodyweight.").optional(),
+    reps: z.number().int().min(0).max(1000).optional(),
+    seconds: z.number().int().min(0).max(86_400).describe("For timed holds like planks.").optional(),
+  })
+  .refine((v) => v.reps !== undefined || v.seconds !== undefined, {
+    message: "Give reps, or seconds for a timed hold",
+    path: ["reps"],
+  });
+
+export const claimMissionInput = z.object({
+  mission: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .describe("The mission's key or title, from get_training_status."),
+});
+
+export const addRewardInput = z.object({
+  name: z.string().trim().min(1).max(80).describe('A real-life treat, e.g. "Cheat meal".'),
+  cost: z.number().int().min(1).max(100_000).describe("Price in gold."),
+  notes: z.string().trim().max(300).optional(),
+});
+
+export const redeemRewardInput = z.object({
+  reward: z.string().trim().min(1).max(80).describe("The reward's name, matched loosely."),
+});
+
+export const setTrainingPreferencesInput = z.object({
+  program: programKeySchema
+    .describe("ppl = Push/Pull/Legs (3-day rotation); push_pull = Push/Pull with legs folded in (2-day).")
+    .optional(),
+  equipment: equipmentSetupSchema.describe("gym | dumbbells | bodyweight").optional(),
+  daysPerWeek: z.number().int().min(1).max(7).optional(),
 });

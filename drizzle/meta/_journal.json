@@ -50,6 +50,13 @@
       "when": 1790413159446,
       "tag": "0006_diet_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791886146044,
+      "tag": "0007_training_and_rpg",
+      "breakpoints": true
     }
   ]
 }
