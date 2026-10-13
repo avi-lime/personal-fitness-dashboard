@@ -1,3 +1,14 @@
+import net from "node:net";
+
+/**
+ * Node's "happy eyeballs" gives each resolved address 250 ms to answer before
+ * moving on. From a high-latency network that is shorter than one round trip
+ * to the database, so every address is abandoned and the connection fails
+ * with ETIMEDOUT even though the server is reachable. Two seconds per address
+ * is plenty; it only affects these maintenance scripts, not the app.
+ */
+net.setDefaultAutoSelectFamilyAttemptTimeout(2000);
+
 /**
  * Which database a script should talk to.
  *
