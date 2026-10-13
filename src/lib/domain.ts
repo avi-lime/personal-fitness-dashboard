@@ -164,6 +164,7 @@ export type GoalStatus = (typeof GOAL_STATUSES)[number];
 
 /** The dashboard sections a user can show or hide. */
 export const DASHBOARD_SECTIONS = [
+  "rings",
   "nextAction",
   "quickActions",
   "plan",
@@ -183,6 +184,7 @@ export type DashboardSection = (typeof DASHBOARD_SECTIONS)[number];
 export type DashboardSectionVisibility = Record<DashboardSection, boolean>;
 
 export const DEFAULT_DASHBOARD_SECTIONS: DashboardSectionVisibility = {
+  rings: true,
   nextAction: true,
   quickActions: true,
   plan: true,

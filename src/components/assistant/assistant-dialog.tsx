@@ -61,11 +61,8 @@ export function AssistantDialog({
           event.preventDefault();
           (event.currentTarget as HTMLElement).focus();
         }}
-        className={cn(
-          "gap-0 p-0 sm:max-w-lg",
-          // Bottom sheet on phones: full width, pinned above the keyboard, with a grab handle.
-          "max-sm:top-auto max-sm:bottom-0 max-sm:max-h-[80dvh] max-sm:max-w-full max-sm:translate-y-0 max-sm:rounded-b-none max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))]",
-        )}
+        // A bottom sheet on phones, like every dialog (see ui/dialog.tsx).
+        className="gap-0 p-0 sm:max-w-lg"
       >
         <div className="mx-auto mt-2 h-1 w-9 rounded-full bg-foreground/20 sm:hidden" aria-hidden />
         <DialogHeader className="sr-only">

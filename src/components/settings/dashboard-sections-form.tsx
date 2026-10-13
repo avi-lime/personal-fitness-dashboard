@@ -8,6 +8,7 @@ import { updateDashboardSectionsAction } from "@/server/actions/settings";
 import { DASHBOARD_SECTIONS, type DashboardSection, type DashboardSectionVisibility } from "@/lib/domain";
 
 const LABELS: Record<DashboardSection, string> = {
+  rings: "Day at a glance",
   nextAction: "Next action",
   quickActions: "Log",
   plan: "Today's plan",
