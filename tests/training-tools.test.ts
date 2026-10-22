@@ -176,3 +176,38 @@ suite("training tools", () => {
     expect(resumed.resumed).toBe(false);
   });
 });
+
+suite("warm-ups", () => {
+  let carol: McpContext;
+  beforeAll(async () => {
+    carol = await createUser("warm-carol");
+  });
+  afterAll(async () => {
+    if (carol) await db.delete(users).where(eq(users.id, carol.userId));
+  });
+
+  it("logs a warm-up that earns nothing and never becomes a record", async () => {
+    await pastSession(carol.userId, 5, [{ name: "Bench press", sets: [[40, 8]] }]);
+    const warm = await call("log_set", carol, { exercise: "bench", weightKg: 60, reps: 8, warmup: true });
+    expect((warm.data as { xp: number; pr: unknown }).xp).toBe(0);
+    expect((warm.data as { pr: unknown }).pr).toBeNull();
+    expect(warm.summary).toMatch(/warm-up/);
+
+    const snapshot = await getTrainingSnapshot(carol.userId, "UTC");
+    // Only the past work set counts: one set, one finished session.
+    expect(snapshot.rpg.xp.training).toBe(10 + 50);
+    expect(snapshot.prs).toHaveLength(0);
+  });
+
+  it("opens a planned session with its warm-up rows first", async () => {
+    await pastSession(carol.userId, 8, [{ name: "Bench press", sets: [[60, 8], [60, 8]] }], "legs");
+    const active = (await getTrainingSnapshot(carol.userId, "UTC")).active;
+    if (active) await db.update(workouts).set({ completedAt: new Date() }).where(eq(workouts.id, active.id));
+    const { workout } = await startPlannedWorkout(carol.userId, "UTC");
+    const bench = workout.exercises.find((exercise) => exercise.exerciseKey === "barbell-bench-press")!;
+    const phases = bench.sets.map((set) => set.phase);
+    expect(phases[0]).toBe("warmup");
+    expect(phases.indexOf("work")).toBeGreaterThan(0);
+    expect(phases.slice(phases.indexOf("work")).every((phase) => phase === "work")).toBe(true);
+  });
+});

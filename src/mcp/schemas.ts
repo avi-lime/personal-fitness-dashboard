@@ -577,6 +577,7 @@ export const logSetInput = z
     weightKg: bounded1000.describe("Weight lifted in kg. Omit for bodyweight.").optional(),
     reps: z.number().int().min(0).max(1000).optional(),
     seconds: z.number().int().min(0).max(86_400).describe("For timed holds like planks.").optional(),
+    warmup: z.boolean().describe("A warm-up set: logged, but earns no XP and never counts as a record.").optional(),
   })
   .refine((v) => v.reps !== undefined || v.seconds !== undefined, {
     message: "Give reps, or seconds for a timed hold",

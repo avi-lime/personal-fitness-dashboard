@@ -2,7 +2,13 @@
 
 import { z } from "zod";
 import { ok, fail, type ActionResult } from "@/lib/action-result";
-import { exerciseInputSchema, setInputSchema, uuidSchema, workoutInputSchema } from "@/lib/validation";
+import {
+  dropsSchema,
+  exerciseInputSchema,
+  setInputSchema,
+  uuidSchema,
+  workoutInputSchema,
+} from "@/lib/validation";
 import {
   addExercise,
   addSet,
@@ -98,6 +104,7 @@ const setUpdateSchema = z.object({
   durationSeconds: z.number().int().min(0).max(86_400).nullish(),
   rpe: z.number().min(0).max(10).nullish(),
   completed: z.boolean().optional(),
+  drops: dropsSchema.optional(),
 });
 
 export async function updateSetAction(input: unknown): Promise<ActionResult<undefined>> {

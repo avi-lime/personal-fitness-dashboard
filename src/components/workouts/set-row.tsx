@@ -26,7 +26,9 @@ export function SetRow({ set, index }: { set: WorkoutSetView; index: number }) {
 
   return (
     <>
-      <span className={cn("tabular text-sm", muted)}>{index + 1}</span>
+      <span className={cn("tabular text-sm", muted, set.phase === "warmup" && "text-xs font-medium text-brand")} title={set.phase === "warmup" ? "Warm-up" : undefined}>
+        {set.phase === "warmup" ? "W" : index + 1}
+      </span>
       <Input
         defaultValue={set.reps ?? ""}
         inputMode="numeric"

@@ -230,3 +230,49 @@ describe("catalogue tie-break", () => {
     expect(matchCatalogue("press")).toBeNull();
   });
 });
+
+describe("warm-ups and drops", () => {
+  it("ramps up to a known working weight, snapped to the lift's increment", async () => {
+    const { warmupRamp } = await import("@/lib/fitness/progression");
+    expect(warmupRamp(exerciseByKey("barbell-bench-press")!, 60).map((s) => [s.weightKg, s.reps])).toEqual([
+      [20, 10],
+      [30, 8],
+      [40, 5],
+      [50, 3],
+    ]);
+    expect(warmupRamp(exerciseByKey("dumbbell-bench-press")!, 20).map((s) => [s.weightKg, s.reps])).toEqual([
+      [10, 10],
+      [14, 5],
+    ]);
+    // Isolation, bodyweight, and lifts with no known weight get none.
+    expect(warmupRamp(exerciseByKey("lateral-raise")!, 10)).toEqual([]);
+    expect(warmupRamp(exerciseByKey("pull-up")!, null)).toEqual([]);
+    expect(warmupRamp(exerciseByKey("barbell-bench-press")!, null)).toEqual([]);
+  });
+
+  it("warms up the first heavy lift for a muscle, not the ones after it", () => {
+    const history = resolveSets([
+      ...times(3, () => set("Bench press", 9, { weightKg: 60, reps: 8 })),
+      ...times(3, () => set("Incline bench press", 9, { weightKg: 40, reps: 8 })),
+    ]);
+    const result = planWorkout({
+      program: PROGRAMS.ppl,
+      setup: "gym",
+      lastDay: "legs",
+      statuses: computeMuscleStatus(history, TODAY, NOW),
+      history,
+    });
+    const bench = result.exercises.find((exercise) => exercise.key === "barbell-bench-press")!;
+    expect(bench.warmups.length).toBeGreaterThan(0);
+    const incline = result.exercises.find((exercise) => exercise.primary.includes("chest") && exercise.key !== bench.key)!;
+    expect(incline.warmups).toEqual([]);
+  });
+
+  it("counts a drop set's drops in volume, but as one set", async () => {
+    const { summariseSessions } = await import("@/lib/rpg/xp");
+    const sets = resolveSets([{ ...set("Bench press", 1, { weightKg: 60, reps: 8 }), drops: [{ weightKg: 48, reps: 8 }] }]);
+    const [session] = summariseSessions(sets, []);
+    expect(session.sets).toBe(1);
+    expect(session.volumeKg).toBe(60 * 8 + 48 * 8);
+  });
+});

@@ -191,13 +191,19 @@ export const trainingTools = [
       const result = await logSet(
         ctx.userId,
         ctx.timezone,
-        { exercise: args.exercise, weightKg: args.weightKg ?? null, reps: args.reps ?? null, seconds: args.seconds ?? null },
+        {
+          exercise: args.exercise,
+          weightKg: args.weightKg ?? null,
+          reps: args.reps ?? null,
+          seconds: args.seconds ?? null,
+          warmup: args.warmup ?? false,
+        },
         ctx.source,
       );
       const what = args.seconds
         ? `${args.seconds}s`
         : `${args.weightKg ? `${args.weightKg} kg × ` : ""}${args.reps} reps`;
-      const summary = `Logged ${result.exerciseName} set ${result.setNumber}: ${what}. +${result.xp} XP.${result.pr ? ` New PR: ${scoreLabel(result.pr)} (was ${result.pr.previous}${result.pr.kind === "e1rm" ? " kg est. 1RM" : ""}).` : ""}`;
+      const summary = `Logged ${args.warmup ? "a warm-up for " : ""}${result.exerciseName} set ${result.setNumber}: ${what}. +${result.xp} XP.${result.pr ? ` New PR: ${scoreLabel(result.pr)} (was ${result.pr.previous}${result.pr.kind === "e1rm" ? " kg est. 1RM" : ""}).` : ""}`;
       await recordMutation(ctx.userId, "log_set", args, summary, ctx.source);
       return { summary, data: result };
     },

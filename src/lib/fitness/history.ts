@@ -6,6 +6,9 @@ import type { LocalDate } from "@/lib/date";
 /**
  * One completed set, flattened out of workouts → exercises → sets.
  *
+ * Only work sets: warm-ups are filtered out where the records are loaded, so
+ * no XP, credit, record or progression can ever come from one.
+ *
  * Every fitness and RPG calculation runs over a list of these, so nothing
  * about muscles, recovery, PRs or XP is ever stored: change or delete a set
  * and every number that depended on it changes with it.
@@ -27,6 +30,8 @@ export interface SetRecord {
   reps: number | null;
   weightKg: number | null;
   durationSeconds: number | null;
+  /** Drop-set extras: more volume, still one set. */
+  drops?: Array<{ weightKg: number | null; reps: number | null }>;
 }
 
 export interface ResolvedSet extends SetRecord {

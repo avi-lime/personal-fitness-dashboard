@@ -22,6 +22,8 @@ export interface WorkoutSetView {
   durationSeconds: number | null;
   rpe: number | null;
   completed: boolean;
+  phase: "work" | "warmup";
+  drops: Array<{ weightKg: number | null; reps: number | null }>;
 }
 
 export interface WorkoutExerciseView {
@@ -87,6 +89,8 @@ async function hydrate(rows: Workout[]): Promise<WorkoutView[]> {
       durationSeconds: set.durationSeconds,
       rpe: set.rpe,
       completed: set.completed,
+      phase: set.phase,
+      drops: set.drops,
     });
     setsByExercise.set(set.exerciseId, list);
   }
@@ -296,7 +300,12 @@ export async function deleteExercise(userId: string, exerciseId: string): Promis
 export async function addSet(
   userId: string,
   exerciseId: string,
-  values: { reps?: number | null; weightKg?: number | null; durationSeconds?: number | null },
+  values: {
+    reps?: number | null;
+    weightKg?: number | null;
+    durationSeconds?: number | null;
+    phase?: "work" | "warmup";
+  },
 ): Promise<string | null> {
   if (!(await workoutIdForExercise(userId, exerciseId))) return null;
   const [{ count }] = await db
@@ -311,6 +320,7 @@ export async function addSet(
       reps: values.reps ?? null,
       weightKg: values.weightKg ?? null,
       durationSeconds: values.durationSeconds ?? null,
+      phase: values.phase ?? "work",
     })
     .returning({ id: workoutSets.id });
   return created.id;
@@ -325,6 +335,7 @@ export async function updateSet(
     durationSeconds?: number | null;
     rpe?: number | null;
     completed?: boolean;
+    drops?: Array<{ weightKg: number | null; reps: number | null }>;
   },
 ): Promise<boolean> {
   const [row] = await db
@@ -401,6 +412,8 @@ export async function previousPerformance(
     durationSeconds: set.durationSeconds,
     rpe: set.rpe,
     completed: set.completed,
+    phase: set.phase,
+    drops: set.drops,
   }));
 
   return {

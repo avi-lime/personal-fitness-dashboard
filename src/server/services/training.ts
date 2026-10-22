@@ -100,11 +100,12 @@ export async function loadSetRecords(userId: string): Promise<SetRecord[]> {
       reps: workoutSets.reps,
       weightKg: workoutSets.weightKg,
       durationSeconds: workoutSets.durationSeconds,
+      drops: workoutSets.drops,
     })
     .from(workoutSets)
     .innerJoin(workoutExercises, eq(workoutExercises.id, workoutSets.exerciseId))
     .innerJoin(workouts, eq(workouts.id, workoutExercises.workoutId))
-    .where(and(eq(workouts.userId, userId), eq(workoutSets.completed, true)))
+    .where(and(eq(workouts.userId, userId), eq(workoutSets.completed, true), eq(workoutSets.phase, "work")))
     .orderBy(asc(workouts.localDate), asc(workoutExercises.sortOrder), asc(workoutSets.sortOrder));
 
   return rows.map((row) => ({
@@ -121,6 +122,7 @@ export async function loadSetRecords(userId: string): Promise<SetRecord[]> {
     reps: row.reps,
     weightKg: row.weightKg,
     durationSeconds: row.durationSeconds,
+    drops: row.drops,
   }));
 }
 
@@ -302,13 +304,17 @@ export async function startPlannedWorkout(
         .values({ workoutId: created.id, name: exercise.name, exerciseKey: exercise.key, sortOrder: index })
         .returning({ id: workoutExercises.id });
       await tx.insert(workoutSets).values(
-        exercise.sets.map((target, position) => ({
+        [
+          ...exercise.warmups.map((target) => ({ target, phase: "warmup" as const })),
+          ...exercise.sets.map((target) => ({ target, phase: "work" as const })),
+        ].map(({ target, phase }, position) => ({
           exerciseId: row.id,
           sortOrder: position,
           reps: target.reps,
           weightKg: target.weightKg,
           durationSeconds: target.seconds,
           completed: false,
+          phase,
         })),
       );
     }
@@ -357,6 +363,7 @@ export async function completeSet(
     .select({
       setId: workoutSets.id,
       sortOrder: workoutSets.sortOrder,
+      phase: workoutSets.phase,
       exerciseId: workoutExercises.id,
       exerciseKey: workoutExercises.exerciseKey,
       exerciseName: workoutExercises.name,
@@ -379,14 +386,15 @@ export async function completeSet(
   await db.update(workoutSets).set(patch).where(eq(workoutSets.id, setId));
 
   const after = await prFor(userId, row.workoutId, identity);
-  const isNewPr = after !== null && (before === null || after.value > before.value);
+  // Warm-ups are invisible to history, so one can never make a record or earn XP.
+  const isNewPr = row.phase === "work" && after !== null && (before === null || after.value > before.value);
   return {
     workoutId: row.workoutId,
     exerciseId: row.exerciseId,
     setId,
     exerciseName: row.exerciseName,
     setNumber: row.sortOrder + 1,
-    xp: XP_PER_SET + (isNewPr && before === null ? XP_PER_PR : 0),
+    xp: row.phase === "work" ? XP_PER_SET + (isNewPr && before === null ? XP_PER_PR : 0) : 0,
     pr: isNewPr ? after : null,
   };
 }
@@ -398,7 +406,14 @@ export async function completeSet(
 export async function logSet(
   userId: string,
   timezone: string,
-  input: { exercise: string; reps?: number | null; weightKg?: number | null; seconds?: number | null; workoutId?: string | null },
+  input: {
+    exercise: string;
+    reps?: number | null;
+    weightKg?: number | null;
+    seconds?: number | null;
+    warmup?: boolean;
+    workoutId?: string | null;
+  },
   source: EntrySource = "web",
 ): Promise<SetResult & { workoutCreated: boolean }> {
   const today = toLocalDate(new Date(), timezone);
@@ -445,10 +460,11 @@ export async function logSet(
       .returning();
   }
 
+  const phase = input.warmup ? "warmup" : "work";
   const [open] = await db
     .select({ id: workoutSets.id })
     .from(workoutSets)
-    .where(and(eq(workoutSets.exerciseId, exercise.id), eq(workoutSets.completed, false)))
+    .where(and(eq(workoutSets.exerciseId, exercise.id), eq(workoutSets.completed, false), eq(workoutSets.phase, phase)))
     .orderBy(asc(workoutSets.sortOrder))
     .limit(1);
   let setId = open?.id;
@@ -459,7 +475,7 @@ export async function logSet(
       .where(eq(workoutSets.exerciseId, exercise.id));
     [{ id: setId }] = await db
       .insert(workoutSets)
-      .values({ exerciseId: exercise.id, sortOrder: count, completed: false })
+      .values({ exerciseId: exercise.id, sortOrder: count, completed: false, phase })
       .returning({ id: workoutSets.id });
   }
 

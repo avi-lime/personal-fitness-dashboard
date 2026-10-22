@@ -100,6 +100,7 @@ export function summariseSessions(
     };
     session.sets += 1;
     session.volumeKg += (set.weightKg ?? 0) * (set.reps ?? 0);
+    for (const drop of set.drops ?? []) session.volumeKg += (drop.weightKg ?? 0) * (drop.reps ?? 0);
     sessions.set(set.workoutId, session);
   }
   for (const session of sessions.values()) {

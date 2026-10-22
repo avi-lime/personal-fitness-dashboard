@@ -122,15 +122,20 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
   const [flash, setFlash] = useState<{ setId: string; text: string; key: number } | null>(null);
   const [report, setReport] = useState<Report | null>(null);
 
-  const exercise = workout.exercises[Math.min(index, workout.exercises.length - 1)];
+  const current = workout.exercises[Math.min(index, workout.exercises.length - 1)];
+  // Warm-ups come first however late one was added; within a phase, the logged order.
+  const exercise = current
+    ? { ...current, sets: [...current.sets].sort((a, b) => Number(a.phase === "work") - Number(b.phase === "work")) }
+    : current;
+  const workSets = exercise ? exercise.sets.filter((set) => set.phase === "work") : [];
   const info = exercise ? metaById.get(exercise.id) : undefined;
   const timed = info?.measure === "time";
 
   const totals = workout.exercises.reduce(
-    (sum, entry) => ({
-      done: sum.done + entry.sets.filter((set) => set.completed).length,
-      all: sum.all + entry.sets.length,
-    }),
+    (sum, entry) => {
+      const work = entry.sets.filter((set) => set.phase === "work");
+      return { done: sum.done + work.filter((set) => set.completed).length, all: sum.all + work.length };
+    },
     { done: 0, all: 0 },
   );
 
@@ -153,7 +158,7 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
         }),
       {
         onSuccess: (result) => {
-          setFlash({ setId: set.id, text: `+${result.xp} XP`, key: Date.now() });
+          if (result.xp > 0) setFlash({ setId: set.id, text: `+${result.xp} XP`, key: Date.now() });
           if (result.pr) {
             const best =
               result.pr.kind === "time"
@@ -168,7 +173,7 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
               position: "top-center",
             });
           }
-          timer.start(info.restSeconds);
+          timer.start(set.phase === "warmup" ? 60 : info.restSeconds);
           if (remaining === 0) {
             const next = workout.exercises.findIndex(
               (entry, position) => position > index && entry.sets.some((candidate) => !candidate.completed),
@@ -182,18 +187,35 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
 
   const undo = (set: WorkoutSetView) => run(() => updateSetAction({ setId: set.id, completed: false }));
 
-  const addSet = () => {
-    if (!exercise) return;
-    const last = exercise.sets.at(-1);
+  const addSet = (phase: "work" | "warmup" = "work") => {
+    if (!exercise || !info) return;
+    const last = workSets.at(-1);
+    const half = workSets[0]?.weightKg ? Math.floor(workSets[0].weightKg / 2 / info.step) * info.step : null;
     run(() =>
-      addSetAction({
-        exerciseId: exercise.id,
-        reps: last?.reps ?? null,
-        weightKg: last?.weightKg ?? null,
-        durationSeconds: last?.durationSeconds ?? null,
-      }),
+      addSetAction(
+        phase === "warmup"
+          ? { exerciseId: exercise.id, reps: 10, weightKg: half, durationSeconds: null, phase }
+          : {
+              exerciseId: exercise.id,
+              reps: last?.reps ?? null,
+              weightKg: last?.weightKg ?? null,
+              durationSeconds: last?.durationSeconds ?? null,
+              phase,
+            },
+      ),
     );
   };
+
+  /** A drop straight after a set: lighter by a fifth, same reps — openGym's default step. */
+  const addDrop = (set: WorkoutSetView) => {
+    if (!info) return;
+    const from = set.drops.at(-1) ?? { weightKg: set.weightKg, reps: set.reps };
+    const weightKg = from.weightKg ? Math.max(0, Math.round((from.weightKg * 0.8) / info.step) * info.step) : null;
+    run(() => updateSetAction({ setId: set.id, drops: [...set.drops, { weightKg, reps: from.reps }] }));
+  };
+
+  const removeDrop = (set: WorkoutSetView, at: number) =>
+    run(() => updateSetAction({ setId: set.id, drops: set.drops.filter((_, position) => position !== at) }));
 
   const finish = () =>
     run(() => finishWorkoutAction(workout.id), {
@@ -288,7 +310,7 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
             ))}
           </div>
           <p className="text-sm text-muted-foreground tabular">
-            {exercise.sets.length} sets
+            {workSets.length} sets
             {info.range ? ` · ${info.range[0]}–${info.range[1]}${timed ? "s" : " reps"}` : ""} · rest {formatClock(info.restSeconds)}
           </p>
           {info.last ? (
@@ -333,19 +355,27 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
             )}
             <span />
           </div>
-          {exercise.sets.map((set, position) => {
+          {exercise.sets.map((set) => {
             const draft = draftOf(set);
             const isNext = set.id === nextSet?.id;
+            const warmup = set.phase === "warmup";
+            const position = warmup ? -1 : workSets.indexOf(set);
+            const name = warmup ? "warm-up set" : `set ${position + 1}`;
             return (
+              <div key={set.id} className="space-y-1">
               <div
-                key={set.id}
                 className={cn(
                   "relative grid grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,1fr)_2.75rem] items-center gap-1.5 rounded-xl p-1",
                   isNext && "bg-brand/5 ring-1 ring-brand/30",
                   set.completed && "opacity-60",
                 )}
               >
-                <span className="text-center text-sm text-muted-foreground tabular">{position + 1}</span>
+                <span
+                  className={cn("text-center text-sm tabular", warmup ? "text-xs font-medium text-brand" : "text-muted-foreground")}
+                  title={warmup ? "Warm-up: no XP, never a record" : undefined}
+                >
+                  {warmup ? "W" : position + 1}
+                </span>
                 {timed ? (
                   <div className="col-span-2 min-w-0">
                     <Stepper value={draft.seconds} onChange={(seconds) => edit(set, { seconds })} step={5} label="seconds" decimals={false} disabled={set.completed || pending} />
@@ -365,7 +395,7 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
                     type="button"
                     onClick={() => (set.completed ? undo(set) : complete(set))}
                     disabled={pending}
-                    aria-label={set.completed ? `Undo set ${position + 1}` : `Complete set ${position + 1}`}
+                    aria-label={set.completed ? `Undo ${name}` : `Complete ${name}`}
                     aria-pressed={set.completed}
                     className={cn(
                       "flex size-11 items-center justify-center rounded-xl ring-1 transition-colors disabled:opacity-50",
@@ -385,11 +415,47 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
                   ) : null}
                 </div>
               </div>
+              {set.phase === "work" && (set.drops.length > 0 || set.completed) && !timed ? (
+                <div className="flex flex-wrap items-center gap-1.5 pl-7">
+                  {set.drops.map((drop, at) => (
+                    <span key={at} className="inline-flex items-center gap-1 rounded-full bg-surface-2 py-0.5 pr-1 pl-2.5 text-xs tabular ring-1 ring-border">
+                      ↓ {drop.weightKg ?? "–"} kg × {drop.reps ?? "–"}
+                      <button
+                        type="button"
+                        onClick={() => removeDrop(set, at)}
+                        disabled={pending}
+                        aria-label={`Remove drop ${at + 1}`}
+                        className="flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {set.completed ? (
+                    <button
+                      type="button"
+                      onClick={() => addDrop(set)}
+                      disabled={pending}
+                      className="h-6 rounded-full border border-dashed border-border px-2 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      + Drop
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              </div>
             );
           })}
-          <Button variant="ghost" size="sm" disabled={pending} onClick={addSet}>
-            <Plus className="size-3.5" aria-hidden /> Add a set
-          </Button>
+          <div className="flex flex-wrap gap-1">
+            <Button variant="ghost" size="sm" disabled={pending} onClick={() => addSet("work")}>
+              <Plus className="size-3.5" aria-hidden /> Add a set
+            </Button>
+            {!timed ? (
+              <Button variant="ghost" size="sm" disabled={pending} onClick={() => addSet("warmup")}>
+                <Plus className="size-3.5" aria-hidden /> Add a warm-up
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex justify-between">

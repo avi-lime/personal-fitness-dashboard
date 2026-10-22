@@ -174,3 +174,28 @@ export function suggestSets(
   });
   return { sets, rule: `Stay at ${working} kg and add a rep where you can; move up once every set hits ${high}.` };
 }
+
+/**
+ * Lighter sets before a heavy one — openGym's warm-up ramp, reduced to what a
+ * plan needs. Barbell lifts start on the empty bar; every rung is strictly
+ * lighter than the last one up and snapped to the lift's own increment.
+ * Bodyweight, timed and isolation work, and lifts without a known weight,
+ * get none.
+ */
+export function warmupRamp(def: ExerciseDef, working: number | null): SetTarget[] {
+  if (!def.compound || def.measure !== "reps" || isBodyweight(def) || !working || working < 20) return [];
+  const bar = def.equipment.includes("barbell") ? 20 : 0;
+  const step = def.increment > 0 ? def.increment : 2.5;
+  const rungs: Array<[number, number]> = bar
+    ? [[0, 10], [0.5, 8], [0.7, 5], [0.85, 3]]
+    : [[0.5, 10], [0.75, 5]];
+  const ramp: SetTarget[] = [];
+  let previous = -1;
+  for (const [share, reps] of rungs) {
+    const weight = Math.max(bar, Math.floor((share === 0 ? bar : working * share) / step) * step);
+    if (weight >= working || weight <= previous) continue;
+    ramp.push({ reps, weightKg: roundToPlate(weight), seconds: null });
+    previous = weight;
+  }
+  return ramp;
+}

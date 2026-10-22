@@ -1,7 +1,7 @@
 import { canDo, exerciseByKey, type EquipmentSetup, type ExerciseDef, type Measure } from "./exercises";
 import type { ResolvedSet } from "./history";
 import { MUSCLE_META, type Muscle } from "./muscles";
-import { suggestSets, type SetTarget } from "./progression";
+import { suggestSets, warmupRamp, type SetTarget } from "./progression";
 import { TOP_UP_EXERCISES, type DayKey, type Program, type ProgramDay } from "./programs";
 import { attentionList, type MuscleStatus } from "./status";
 import type { LocalDate } from "@/lib/date";
@@ -32,6 +32,8 @@ export interface PlannedExercise {
   primary: Muscle[];
   secondary: Muscle[];
   sets: SetTarget[];
+  /** Lighter sets before the work, for the first heavy lift of each muscle. */
+  warmups: SetTarget[];
   /** Where the targets came from. */
   rule: string;
   /** Why the plan differs from the program's default here, if it does. */
@@ -132,6 +134,7 @@ export function planWorkout(input: PlannerInput): PlannedWorkout {
   const last = lastPerformance(input.history);
 
   const used = new Set<string>();
+  const warmed = new Set<Muscle>();
   const exercises: PlannedExercise[] = [];
 
   const build = (def: ExerciseDef, slot: string, baseSets: number, topUp: boolean, extra: string[] = []) => {
@@ -147,6 +150,9 @@ export function planWorkout(input: PlannerInput): PlannedWorkout {
     }
     const previous = last.get(def.key);
     const suggestion = suggestSets(def, sets, previous?.sets ?? []);
+    // One ramp per muscle: the incline press after the bench is already warm.
+    const warmups = def.compound && !warmed.has(def.primary[0]) ? warmupRamp(def, suggestion.sets[0]?.weightKg ?? null) : [];
+    if (def.compound) warmed.add(def.primary[0]);
     used.add(def.key);
     exercises.push({
       key: def.key,
@@ -158,6 +164,7 @@ export function planWorkout(input: PlannerInput): PlannedWorkout {
       primary: def.primary,
       secondary: def.secondary,
       sets: suggestion.sets,
+      warmups,
       rule: suggestion.rule,
       notes,
       last: previous
@@ -204,7 +211,7 @@ export function planWorkout(input: PlannerInput): PlannedWorkout {
   }
 
   const seconds = exercises.reduce(
-    (total, exercise) => total + exercise.sets.length * (40 + exercise.restSeconds),
+    (total, exercise) => total + exercise.sets.length * (40 + exercise.restSeconds) + exercise.warmups.length * 60,
     0,
   );
 

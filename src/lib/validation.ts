@@ -255,7 +255,13 @@ export const setInputSchema = z.object({
   durationSeconds: z.number().int().min(0).max(86_400).nullish(),
   rpe: z.number().min(0).max(10).nullish(),
   completed: z.boolean().default(false),
+  phase: z.enum(["work", "warmup"]).default("work"),
 });
+
+/** A drop set's extra drops, straight after the set. */
+export const dropsSchema = z
+  .array(z.object({ weightKg: z.number().min(0).max(1000).nullable(), reps: z.number().int().min(0).max(1000).nullable() }))
+  .max(10);
 
 export const noteInputSchema = z.object({
   note: z.string().trim().min(1, "Note cannot be empty").max(2000),

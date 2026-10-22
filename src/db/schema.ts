@@ -434,6 +434,13 @@ export const workoutSets = pgTable(
     durationSeconds: integer("duration_seconds"),
     rpe: doublePrecision("rpe"),
     completed: boolean("completed").notNull().default(false),
+    /** Warm-ups prepare for the work; they never count toward XP, records or progression. */
+    phase: text("phase").$type<"work" | "warmup">().notNull().default("work"),
+    /**
+     * A drop set's extra drops, done straight after this set with no rest. They
+     * add volume but the row is still one set (openGym's model; see NOTICE.md).
+     */
+    drops: jsonb("drops").$type<Array<{ weightKg: number | null; reps: number | null }>>().notNull().default(sql`'[]'::jsonb`),
   },
   (table) => [index("workout_sets_idx").on(table.exerciseId, table.sortOrder)],
 );
