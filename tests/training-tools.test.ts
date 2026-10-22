@@ -253,3 +253,50 @@ suite("linking supersets", () => {
   });
 });
 const alienId = "00000000-0000-4000-8000-000000000000";
+
+suite("importing history", () => {
+  let erin: McpContext;
+  beforeAll(async () => {
+    erin = await createUser("import-erin");
+  });
+  afterAll(async () => {
+    if (erin) await db.delete(users).where(eq(users.id, erin.userId));
+  });
+
+  const day = (offset: number) => addDays(today(), offset);
+  const strong = () =>
+    [
+      "Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE",
+      `${day(-10)} 18:00:00,"Push",1h,"Bench Press (Barbell)",1,60,8,0,0,"","",`,
+      `${day(-10)} 18:00:00,"Push",1h,"Bench Press (Barbell)",2,60,8,0,0,"","",`,
+      `${day(-3)} 18:00:00,"Push",1h,"Bench Press (Barbell)",1,65,8,0,0,"","",`,
+    ].join("\n");
+
+  it("previews without writing, then imports, then refuses to duplicate", async () => {
+    const { importHistory } = await import("@/server/services/import");
+    const preview = await importHistory(erin.userId, "UTC", strong(), "kg", false);
+    expect(preview).toMatchObject({ ok: true, summary: { source: "Strong", workouts: 2, added: 2, recognised: 1 } });
+    expect(await db.select().from(workouts).where(eq(workouts.userId, erin.userId))).toHaveLength(0);
+
+    const done = await importHistory(erin.userId, "UTC", strong(), "kg", true);
+    expect(done).toMatchObject({ ok: true, summary: { added: 2 } });
+    const again = await importHistory(erin.userId, "UTC", strong(), "kg", true);
+    expect(again).toMatchObject({ ok: true, summary: { added: 0, skippedDays: 2 } });
+    expect(await db.select().from(workouts).where(eq(workouts.userId, erin.userId))).toHaveLength(2);
+  });
+
+  it("counts imported history like any other: muscles, records, XP", async () => {
+    const snapshot = await getTrainingSnapshot(erin.userId, "UTC");
+    const chest = snapshot.muscles.find((muscle) => muscle.muscle === "chest")!;
+    expect(chest.lastTrained).toBe(day(-3));
+    // The 65 kg session beat the 60 kg one: a record, connected to the library bench.
+    expect(snapshot.prs).toHaveLength(1);
+    expect(snapshot.prs[0].identity).toBe("barbell-bench-press");
+    expect(snapshot.rpg.xp.training).toBe(3 * 10 + 2 * 50 + 25);
+  });
+
+  it("explains a file it cannot read", async () => {
+    const { importHistory } = await import("@/server/services/import");
+    expect(await importHistory(erin.userId, "UTC", "a,b\n1,2", "kg", true)).toMatchObject({ ok: false });
+  });
+});

@@ -1,6 +1,6 @@
 import "server-only";
 import CATALOGUE from "./catalogue.json";
-import { resolveExercise, type ExerciseDef, type ResolvedExercise } from "./exercises";
+import { resolveExercise, wordsOf, type ExerciseDef, type ResolvedExercise } from "./exercises";
 import type { Muscle } from "./muscles";
 
 /**
@@ -23,27 +23,7 @@ export interface CatalogueEntry {
 
 type Row = [string, Muscle[], Muscle[], string | null, string[]];
 
-// Matching is openGym's: other apps bolt qualifiers onto names ("Leg Press (Machine)"),
-// the catalogue writes "lever leg press", so names are compared as a bag of
-// normalised words, with shorthand expanded and filler dropped.
-const SYN: Array<[RegExp, string]> = [
-  [/\bbb\b/g, "barbell"], [/\bdb\b/g, "dumbbell"], [/\bkb\b/g, "kettlebell"],
-  [/\bohp\b/g, "overhead press"], [/\bbw\b/g, "body weight"], [/\bbodyweight\b/g, "body weight"],
-  // "smith machine" first, or the machine rule below leaves "smith lever".
-  [/\bsmith machine\b/g, "smith"], [/\bmachine\b/g, "lever"], [/\bez bar\b/g, "ez barbell"],
-  [/\bpull ups?\b/g, "pull up"], [/\bchin ups?\b/g, "chin up"], [/\bpush ups?\b/g, "push up"],
-  [/\bsit ups?\b/g, "sit up"], [/\bdips?\b/g, "dip"], [/\braises?\b/g, "raise"],
-  [/\bcurls?\b/g, "curl"], [/\bpresses\b/g, "press"], [/\bextensions?\b/g, "extension"],
-  [/\bcables?\b/g, "cable"],
-];
-const FILLER = new Set(["the", "a", "with", "and", "v", "variation", "version", "pulley", "weighted"]);
-
-export function wordsOf(name: string): string[] {
-  let key = name.toLowerCase().replace(/[()[\]]/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
-  for (const [pattern, to] of SYN) key = key.replace(pattern, to);
-  return key.split(" ").filter((word) => word && !FILLER.has(word));
-}
-
+// Matching is openGym's: names compared as a bag of normalised words (see wordsOf).
 let index: { exact: Map<string, Row>; all: Array<{ row: Row; words: Set<string> }> } | null = null;
 
 function build() {

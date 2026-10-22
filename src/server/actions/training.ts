@@ -18,6 +18,7 @@ import {
 } from "@/server/services/training";
 import { claimMission, createReward, redeemReward, setRewardActive } from "@/server/services/rpg";
 import { setWorkoutCompletion } from "@/server/services/workouts";
+import { importHistory, type ImportSummary } from "@/server/services/import";
 import { revalidateAll, withValidation } from "./helpers";
 
 export async function saveTrainingPreferencesAction(input: unknown): Promise<ActionResult<undefined>> {
@@ -95,5 +96,18 @@ export async function redeemRewardAction(rewardId: string): Promise<ActionResult
     if (!result.ok) return fail(result.error);
     revalidateAll();
     return ok({ balance: result.balance });
+  });
+}
+
+const importSchema = z.object({ text: z.string().min(1).max(4_000_000), commit: z.boolean() });
+
+/** Preview (commit: false) or run an import of another app's workout CSV. */
+export async function importHistoryAction(input: unknown): Promise<ActionResult<ImportSummary>> {
+  return withValidation(importSchema, input, async ({ text, commit }, ctx) => {
+    const unit = ctx.profile.unitSystem === "imperial" ? "lb" : "kg";
+    const result = await importHistory(ctx.user.id, ctx.timezone, text, unit, commit);
+    if (!result.ok) return fail(result.error);
+    if (commit) revalidateAll();
+    return ok(result.summary);
   });
 }

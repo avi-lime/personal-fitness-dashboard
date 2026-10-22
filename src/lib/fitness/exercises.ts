@@ -138,6 +138,46 @@ for (const exercise of EXERCISES) {
   }
 }
 
+// openGym's name normalisation (AGPL, see NOTICE.md). Other apps bolt qualifiers onto names
+// ("Leg Press (Machine)", "Bench Press (Barbell)") and disagree about word order, so names are
+// compared as a bag of words, with shorthand expanded and filler dropped.
+const SYN: Array<[RegExp, string]> = [
+  [/\bbb\b/g, "barbell"], [/\bdb\b/g, "dumbbell"], [/\bkb\b/g, "kettlebell"],
+  [/\bohp\b/g, "overhead press"], [/\bbw\b/g, "body weight"], [/\bbodyweight\b/g, "body weight"],
+  // "smith machine" first, or the machine rule below leaves "smith lever".
+  [/\bsmith machine\b/g, "smith"], [/\bmachine\b/g, "lever"], [/\bez bar\b/g, "ez barbell"],
+  [/\bpull ups?\b/g, "pull up"], [/\bchin ups?\b/g, "chin up"], [/\bpush ups?\b/g, "push up"],
+  [/\bsit ups?\b/g, "sit up"], [/\bdips?\b/g, "dip"], [/\braises?\b/g, "raise"],
+  [/\bcurls?\b/g, "curl"], [/\bpresses\b/g, "press"], [/\bextensions?\b/g, "extension"],
+  [/\bcables?\b/g, "cable"],
+];
+const FILLER = new Set(["the", "a", "with", "and", "v", "variation", "version", "pulley", "weighted"]);
+
+export function wordsOf(name: string): string[] {
+  let key = name.toLowerCase().replace(/[()[\]]/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
+  for (const [pattern, to] of SYN) key = key.replace(pattern, to);
+  return key.split(" ").filter((word) => word && !FILLER.has(word));
+}
+
+const bagOf = (words: string[]) => [...words].sort().join(" ");
+
+const BY_BAG = new Map<string, ExerciseDef>();
+for (const exercise of EXERCISES) {
+  for (const name of [exercise.name, exercise.key.replace(/-/g, " "), ...exercise.aliases]) {
+    const bag = bagOf(wordsOf(name));
+    if (!BY_BAG.has(bag)) BY_BAG.set(bag, exercise);
+  }
+}
+
+/** Equipment words other apps add to a name, and what they mean in this library. */
+const EQUIPMENT_WORDS: Record<string, Equipment> = {
+  barbell: "barbell",
+  dumbbell: "dumbbell",
+  cable: "cable",
+  lever: "machine",
+  smith: "machine",
+};
+
 export function exerciseByKey(key: string | null | undefined): ExerciseDef | null {
   return key ? (BY_KEY.get(key) ?? null) : null;
 }
@@ -146,12 +186,20 @@ export function exerciseByKey(key: string | null | undefined): ExerciseDef | nul
 export function matchExercise(name: string | null | undefined): ExerciseDef | null {
   if (!name) return null;
   const normalised = normaliseExerciseName(name);
-  return (
-    BY_NAME.get(normalised) ??
-    BY_NAME.get(normalised.replace(/s$/, "")) ??
-    BY_NAME.get(`${normalised}s`) ??
-    null
-  );
+  const direct = BY_NAME.get(normalised) ?? BY_NAME.get(normalised.replace(/s$/, "")) ?? BY_NAME.get(`${normalised}s`);
+  if (direct) return direct;
+  const words = wordsOf(name);
+  const bagged = BY_BAG.get(bagOf(words));
+  if (bagged) return bagged;
+  // "Bent Over Row (Barbell)": drop the equipment word, but only when the lift that remains
+  // really uses that equipment — "Dumbbell Bench Press" must never become the barbell bench.
+  for (const word of words) {
+    const kit = EQUIPMENT_WORDS[word];
+    if (!kit) continue;
+    const found = BY_BAG.get(bagOf(words.filter((other) => other !== word)));
+    if (found && found.equipment.includes(kit)) return found;
+  }
+  return null;
 }
 
 export interface ResolvedExercise {

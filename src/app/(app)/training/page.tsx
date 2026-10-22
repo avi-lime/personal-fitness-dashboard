@@ -10,6 +10,7 @@ import { MissionsList } from "@/components/training/missions-list";
 import { RewardShop } from "@/components/training/reward-shop";
 import { AchievementsGrid } from "@/components/training/achievements-grid";
 import { TrainingTabs } from "@/components/training/training-tabs";
+import { ImportCard } from "@/components/training/import-card";
 import { Card } from "@/components/ui/card";
 import { requireContext } from "@/server/auth";
 import { getTrainingSnapshot, scoreLabel } from "@/server/services/training";
@@ -110,6 +111,7 @@ export default async function TrainingPage({ searchParams }: PageProps<"/trainin
           </ul>
         </section>
       ) : null}
+      <ImportCard />
       <WorkoutList
         workouts={workouts}
         templates={templates.map((template) => ({
