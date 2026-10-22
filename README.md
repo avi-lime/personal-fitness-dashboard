@@ -405,3 +405,10 @@ Four rules keep it coherent:
 4. **Closed vocabularies for anything a model has to name.** Areas, categories, stages and kinds are
    `as const` lists validated by Zod, stored as text — no migration to extend, and a strict enum in
    every tool schema.
+
+## License
+
+[AGPL-3.0-or-later](LICENSE). Parts of the training features are ported from
+[openGym](https://github.com/DuarteSantos8/openGym) (AGPL) and the body map's outlines come from
+MuscleMap (MIT); see [NOTICE.md](NOTICE.md). openGym's exercise images and animations are licensed
+separately and are not used.

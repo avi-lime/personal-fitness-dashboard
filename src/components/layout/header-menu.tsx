@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Monitor, MonitorPlay, Moon, MoreHorizontal, Settings, Sun } from "lucide-react";
+import { Code, LogOut, Monitor, MonitorPlay, Moon, MoreHorizontal, Settings, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +56,12 @@ export function HeaderMenu() {
           <Link href="/settings">
             <Settings className="size-4" /> Settings
           </Link>
+        </DropdownMenuItem>
+        {/* AGPL §13: a network service offers its users the source. */}
+        <DropdownMenuItem asChild>
+          <a href="https://github.com/avi-lime/personal-fitness-dashboard" target="_blank" rel="noreferrer">
+            <Code className="size-4" /> Source code
+          </a>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Theme</DropdownMenuLabel>
