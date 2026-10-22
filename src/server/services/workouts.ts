@@ -33,6 +33,7 @@ export interface WorkoutExerciseView {
   exerciseKey: string | null;
   muscleGroup: string | null;
   sortOrder: number;
+  supersetGroup: number | null;
   sets: WorkoutSetView[];
 }
 
@@ -104,6 +105,7 @@ async function hydrate(rows: Workout[]): Promise<WorkoutView[]> {
       exerciseKey: exercise.exerciseKey,
       muscleGroup: exercise.muscleGroup,
       sortOrder: exercise.sortOrder,
+      supersetGroup: exercise.supersetGroup,
       sets: setsByExercise.get(exercise.id) ?? [],
     });
     exercisesByWorkout.set(exercise.workoutId, list);
@@ -289,6 +291,47 @@ export async function addExercise(
     })
     .returning({ id: workoutExercises.id });
   return created.id;
+}
+
+/**
+ * Links an exercise with the one after it into a superset, or splits them.
+ * A group left with one member stops being a superset.
+ */
+export async function setSuperset(userId: string, exerciseId: string, linkNext: boolean): Promise<boolean> {
+  const workoutId = await workoutIdForExercise(userId, exerciseId);
+  if (!workoutId) return false;
+  const rows = await db
+    .select({ id: workoutExercises.id, group: workoutExercises.supersetGroup })
+    .from(workoutExercises)
+    .where(eq(workoutExercises.workoutId, workoutId))
+    .orderBy(asc(workoutExercises.sortOrder));
+  const at = rows.findIndex((row) => row.id === exerciseId);
+  if (at < 0 || at === rows.length - 1) return false;
+
+  const groups = rows.map((row) => row.group);
+  const fresh = () => Math.max(0, ...groups.filter((group): group is number => group !== null)) + 1;
+  if (linkNext) {
+    const group = groups[at] ?? groups[at + 1] ?? fresh();
+    groups[at] = group;
+    groups[at + 1] = group;
+  } else if (groups[at] !== null && groups[at + 1] === groups[at]) {
+    const old = groups[at];
+    const split = fresh();
+    for (let next = at + 1; next < groups.length && groups[next] === old; next += 1) groups[next] = split;
+  }
+  // A group of one is no superset.
+  groups.forEach((group, index) => {
+    if (group !== null && groups[index - 1] !== group && groups[index + 1] !== group) groups[index] = null;
+  });
+
+  await db.transaction(async (tx) => {
+    for (const [index, row] of rows.entries()) {
+      if (row.group !== groups[index]) {
+        await tx.update(workoutExercises).set({ supersetGroup: groups[index] }).where(eq(workoutExercises.id, row.id));
+      }
+    }
+  });
+  return true;
 }
 
 export async function deleteExercise(userId: string, exerciseId: string): Promise<boolean> {

@@ -20,8 +20,9 @@ import { ConfirmButton } from "@/components/common/confirm-button";
 import { useAction } from "@/components/common/use-action";
 import { MuscleChip } from "./muscle-chip";
 import { formatClock, useRestTimer, useWakeLock } from "./use-rest-timer";
+import { afterSet, exerciseLabels, type FlowExercise } from "@/lib/fitness/superset";
 import { completeSetAction, finishWorkoutAction } from "@/server/actions/training";
-import { addSetAction, updateSetAction } from "@/server/actions/workouts";
+import { addSetAction, setSupersetAction, updateSetAction } from "@/server/actions/workouts";
 import { isMuscle, type Muscle } from "@/lib/fitness/muscles";
 import { formatShortDate } from "@/lib/date";
 import { formatValue } from "@/lib/format";
@@ -116,6 +117,14 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
   useWakeLock();
 
   const metaById = useMemo(() => new Map(meta.map((entry) => [entry.exerciseId, entry])), [meta]);
+  /** The workout in the shape the superset flow reads, optionally with sets marked done. */
+  const flowOf = (doneNow: (set: WorkoutSetView) => boolean = () => false): FlowExercise[] =>
+    workout.exercises.map((entry) => ({
+      supersetGroup: entry.supersetGroup,
+      restSeconds: metaById.get(entry.id)?.restSeconds ?? 90,
+      sets: entry.sets.map((set) => ({ id: set.id, phase: set.phase, completed: set.completed || doneNow(set) })),
+    }));
+  const labels = exerciseLabels(flowOf());
   const firstOpen = workout.exercises.findIndex((exercise) => exercise.sets.some((set) => !set.completed));
   const [index, setIndex] = useState(firstOpen === -1 ? 0 : firstOpen);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -147,7 +156,8 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
     if (!exercise || !info) return;
     timer.unlockAudio();
     const draft = draftOf(set);
-    const remaining = exercise.sets.filter((entry) => !entry.completed && entry.id !== set.id).length;
+    // The session as it will be once this set is done — what the flow decides from.
+    const after = flowOf((entry) => entry.id === set.id);
     run(
       () =>
         completeSetAction({
@@ -173,13 +183,10 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
               position: "top-center",
             });
           }
-          timer.start(set.phase === "warmup" ? 60 : info.restSeconds);
-          if (remaining === 0) {
-            const next = workout.exercises.findIndex(
-              (entry, position) => position > index && entry.sets.some((candidate) => !candidate.completed),
-            );
-            if (next !== -1) window.setTimeout(() => setIndex(next), 600);
-          }
+          const { restSeconds, next } = afterSet(after, index, set.id);
+          if (restSeconds > 0) timer.start(restSeconds);
+          // Straight on to a superset partner; a moment's pause before a new exercise.
+          if (next !== index) window.setTimeout(() => setIndex(next), restSeconds === 0 ? 0 : 600);
         },
       },
     );
@@ -292,7 +299,7 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
                         : "bg-surface-3 ring-border",
                   )}
                 >
-                  {done ? <Check className="size-3 text-positive" aria-label="Done" /> : <span className="tabular">{position + 1}</span>}
+                  {done ? <Check className="size-3 text-positive" aria-label="Done" /> : <span className="tabular">{labels[position]}</span>}
                   {entry.name}
                 </button>
               </li>
@@ -304,6 +311,32 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
       <Card className="gap-4 p-3 sm:p-4">
         <div className="space-y-2">
           <h2 className="font-display text-3xl leading-tight">{exercise.name}</h2>
+          {(() => {
+            const following = workout.exercises[index + 1];
+            const linked = following && exercise.supersetGroup !== null && following.supersetGroup === exercise.supersetGroup;
+            const partners = workout.exercises.filter(
+              (entry, position) => position !== index && exercise.supersetGroup !== null && entry.supersetGroup === exercise.supersetGroup,
+            );
+            return (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {partners.length > 0 ? (
+                  <span>
+                    Superset {labels[index].charAt(0)} with {partners.map((entry) => entry.name).join(", ")} — no rest between, one after the round.
+                  </span>
+                ) : null}
+                {following ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => run(() => setSupersetAction({ exerciseId: exercise.id, linkNext: !linked }))}
+                    className="h-6 rounded-full border border-dashed border-border px-2 hover:text-foreground"
+                  >
+                    {linked ? `Unlink ${following.name}` : `Superset with ${following.name}`}
+                  </button>
+                ) : null}
+              </div>
+            );
+          })()}
           <div className="flex flex-wrap gap-1.5">
             {info.primary.filter(isMuscle).map((muscle) => (
               <MuscleChip key={muscle} muscle={muscle as Muscle} />

@@ -211,3 +211,45 @@ suite("warm-ups", () => {
     expect(phases.slice(phases.indexOf("work")).every((phase) => phase === "work")).toBe(true);
   });
 });
+
+suite("linking supersets", () => {
+  let dan: McpContext;
+  beforeAll(async () => {
+    dan = await createUser("superset-dan");
+  });
+  afterAll(async () => {
+    if (dan) await db.delete(users).where(eq(users.id, dan.userId));
+  });
+
+  it("links neighbours, splits them, and drops a group of one", async () => {
+    const { setSuperset, getWorkout } = await import("@/server/services/workouts");
+    const id = await pastSession(dan.userId, 1, [
+      { name: "Bench press", sets: [[60, 8]] },
+      { name: "Barbell row", sets: [[50, 8]] },
+      { name: "Lateral raise", sets: [[8, 15]] },
+    ]);
+    const groups = async () => (await getWorkout(dan.userId, id))!.exercises.map((exercise) => exercise.supersetGroup);
+    const exercises = (await getWorkout(dan.userId, id))!.exercises;
+
+    expect(await setSuperset(dan.userId, exercises[0].id, true)).toBe(true);
+    const [a, b, c] = await groups();
+    expect(a).not.toBeNull();
+    expect(b).toBe(a);
+    expect(c).toBeNull();
+
+    await setSuperset(dan.userId, exercises[1].id, true);
+    expect(new Set(await groups()).size).toBe(1);
+
+    // Split after the first: it is left alone, so it stops being a superset.
+    await setSuperset(dan.userId, exercises[0].id, false);
+    const [first, second, third] = await groups();
+    expect(first).toBeNull();
+    expect(second).not.toBeNull();
+    expect(third).toBe(second);
+
+    // The last exercise has nothing after it to link to; another user cannot link at all.
+    expect(await setSuperset(dan.userId, exercises[2].id, true)).toBe(false);
+    expect(await setSuperset(alienId, exercises[0].id, true)).toBe(false);
+  });
+});
+const alienId = "00000000-0000-4000-8000-000000000000";

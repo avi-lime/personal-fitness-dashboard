@@ -18,6 +18,7 @@ import {
   deleteWorkout,
   deleteWorkoutTemplate,
   saveWorkoutAsTemplate,
+  setSuperset,
   setWorkoutCompletion,
   updateSet,
   updateWorkout,
@@ -143,6 +144,17 @@ export async function deleteWorkoutTemplateAction(
   return withValidation(uuidSchema, templateId, async (id, ctx) => {
     const deleted = await deleteWorkoutTemplate(ctx.user.id, id);
     if (!deleted) return fail("Template not found");
+    revalidateAll();
+    return ok();
+  });
+}
+
+const supersetSchema = z.object({ exerciseId: uuidSchema, linkNext: z.boolean() });
+
+export async function setSupersetAction(input: unknown): Promise<ActionResult<undefined>> {
+  return withValidation(supersetSchema, input, async (value, ctx) => {
+    const done = await setSuperset(ctx.user.id, value.exerciseId, value.linkNext);
+    if (!done) return fail("Exercise not found, or it is the last one");
     revalidateAll();
     return ok();
   });

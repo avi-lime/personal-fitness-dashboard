@@ -417,6 +417,8 @@ export const workoutExercises = pgTable(
     exerciseKey: text("exercise_key"),
     muscleGroup: text("muscle_group"),
     sortOrder: integer("sort_order").notNull().default(0),
+    /** Neighbouring exercises with the same number are one superset. */
+    supersetGroup: integer("superset_group"),
   },
   (table) => [index("workout_exercises_idx").on(table.workoutId, table.sortOrder)],
 );

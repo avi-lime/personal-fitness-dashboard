@@ -1,0 +1,1 @@
+ALTER TABLE "workout_exercises" ADD COLUMN "superset_group" integer;
