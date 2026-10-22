@@ -4,13 +4,8 @@ import { db } from "@/db";
 import { rpgLedger, trainingSettings, workoutExercises, workoutSets, workouts } from "@/db/schema";
 import type { EntrySource } from "@/lib/domain";
 import { localDayBounds, startOfWeek, toLocalDate, type LocalDate } from "@/lib/date";
-import {
-  exerciseByKey,
-  matchExercise,
-  normaliseExerciseName,
-  resolveExercise,
-  type EquipmentSetup,
-} from "@/lib/fitness/exercises";
+import { matchExercise, normaliseExerciseName, type EquipmentSetup } from "@/lib/fitness/exercises";
+import { instructionsFor, resolveFully } from "@/lib/fitness/catalogue";
 import { resolveSets, type SetRecord } from "@/lib/fitness/history";
 import { MUSCLES } from "@/lib/fitness/muscles";
 import { findPersonalRecords, suggestSets, type PersonalRecord } from "@/lib/fitness/progression";
@@ -343,9 +338,9 @@ async function prFor(userId: string, workoutId: string, identity: string): Promi
   return findPersonalRecords(sets).find((record) => record.workoutId === workoutId && record.identity === identity) ?? null;
 }
 
-function identityOf(exercise: { exerciseKey: string | null; name: string }): string {
-  const def = exerciseByKey(exercise.exerciseKey) ?? matchExercise(exercise.name);
-  return def?.key ?? `custom:${exercise.name.trim().toLowerCase()}`;
+/** Must agree with history's resolution, or a PR on a catalogue exercise would go unseen. */
+function identityOf(exercise: { exerciseKey: string | null; name: string; muscleGroup?: string | null }): string {
+  return resolveFully(exercise).identity;
 }
 
 /**
@@ -365,6 +360,7 @@ export async function completeSet(
       exerciseId: workoutExercises.id,
       exerciseKey: workoutExercises.exerciseKey,
       exerciseName: workoutExercises.name,
+      muscleGroup: workoutExercises.muscleGroup,
       workoutId: workouts.id,
     })
     .from(workoutSets)
@@ -373,7 +369,7 @@ export async function completeSet(
     .where(and(eq(workoutSets.id, setId), eq(workouts.userId, userId)));
   if (!row) return null;
 
-  const identity = identityOf({ exerciseKey: row.exerciseKey, name: row.exerciseName });
+  const identity = identityOf({ exerciseKey: row.exerciseKey, name: row.exerciseName, muscleGroup: row.muscleGroup });
   const before = await prFor(userId, row.workoutId, identity);
 
   const patch: Partial<typeof workoutSets.$inferInsert> = { completed: true };
@@ -503,6 +499,8 @@ export interface SessionExerciseMeta {
   /** kg per tap of the weight stepper. */
   step: number;
   primary: string[];
+  /** Step-by-step, from the catalogue; empty when it has none. */
+  instructions: string[];
   rule: string | null;
   last: { date: LocalDate; sets: Array<{ reps: number | null; weightKg: number | null; durationSeconds: number | null }> } | null;
 }
@@ -523,9 +521,9 @@ export async function sessionMeta(userId: string, workout: WorkoutView): Promise
   }
 
   return workout.exercises.map((exercise) => {
-    const resolved = resolveExercise({ exerciseKey: exercise.exerciseKey, name: exercise.name, muscleGroup: exercise.muscleGroup });
+    const resolved = resolveFully({ exerciseKey: exercise.exerciseKey, name: exercise.name, muscleGroup: exercise.muscleGroup });
     const def = resolved.def;
-    const identity = def?.key ?? `custom:${exercise.name.trim().toLowerCase()}`;
+    const identity = resolved.identity;
     const previous = last.get(identity) ?? null;
     return {
       exerciseId: exercise.id,
@@ -535,6 +533,7 @@ export async function sessionMeta(userId: string, workout: WorkoutView): Promise
       restSeconds: def?.restSeconds ?? 90,
       step: def && def.increment > 0 ? def.increment : 2.5,
       primary: resolved.primary,
+      instructions: resolved.catalogue?.instructions ?? instructionsFor(def, exercise.name),
       rule: def ? suggestSets(def, Math.max(1, exercise.sets.length), previous?.sets ?? []).rule : null,
       last: previous
         ? {

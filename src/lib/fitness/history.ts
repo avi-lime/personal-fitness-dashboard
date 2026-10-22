@@ -1,4 +1,5 @@
-import { resolveExercise, type ExerciseDef } from "./exercises";
+import type { ExerciseDef } from "./exercises";
+import { resolveFully } from "./catalogue";
 import type { Muscle } from "./muscles";
 import type { LocalDate } from "@/lib/date";
 
@@ -40,7 +41,7 @@ export interface ResolvedSet extends SetRecord {
 export function resolveSets(records: readonly SetRecord[]): ResolvedSet[] {
   return records
     .map((record) => {
-      const resolved = resolveExercise({
+      const resolved = resolveFully({
         exerciseKey: record.exerciseKey,
         name: record.exerciseName,
         muscleGroup: record.muscleGroup,
@@ -48,7 +49,7 @@ export function resolveSets(records: readonly SetRecord[]): ResolvedSet[] {
       return {
         ...record,
         def: resolved.def,
-        identity: resolved.def?.key ?? `custom:${record.exerciseName.trim().toLowerCase()}`,
+        identity: resolved.identity,
         primary: resolved.primary,
         secondary: resolved.secondary,
       };

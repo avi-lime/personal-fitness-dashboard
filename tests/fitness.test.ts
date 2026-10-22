@@ -196,3 +196,37 @@ describe("planner", () => {
     expect(result.estimatedMinutes).toBeGreaterThan(20);
   });
 });
+
+describe("exercise catalogue", () => {
+  it("places names the library does not know, from any app's dialect", async () => {
+    const { matchCatalogue, resolveFully } = await import("@/lib/fitness/catalogue");
+    expect(matchCatalogue("Cable Lateral Raise")?.primary).toEqual(["side_delts"]);
+    // Equipment in parentheses, word order swapped: still the same lift.
+    expect(matchCatalogue("Bulgarian Split Squat (Dumbbell)")?.primary).toContain("quads");
+    expect(resolveFully({ name: "Hip Adduction (Machine)" }).primary).toEqual([]);
+    // A stretch is not training.
+    expect(resolveFully({ name: "hamstring stretch" }).primary).toEqual([]);
+  });
+
+  it("refuses to guess between equally close lifts", async () => {
+    const { matchCatalogue } = await import("@/lib/fitness/catalogue");
+    expect(matchCatalogue("press")).toBeNull();
+  });
+
+  it("keeps the library and the user's own muscle group ahead of the catalogue", async () => {
+    const { resolveFully } = await import("@/lib/fitness/catalogue");
+    expect(resolveFully({ name: "Bench press" }).identity).toBe("barbell-bench-press");
+    // Outside the library, a muscle group the user typed beats the catalogue.
+    expect(resolveFully({ name: "Zercher squat", muscleGroup: "glutes" }).primary).toEqual(["glutes"]);
+    expect(resolveFully({ name: "Zercher squat" }).identity).toMatch(/^catalogue:/);
+  });
+});
+
+describe("catalogue tie-break", () => {
+  it("reads an unqualified name as the barbell lift, and only then", async () => {
+    const { matchCatalogue } = await import("@/lib/fitness/catalogue");
+    expect(matchCatalogue("Zercher Squat")?.name).toBe("barbell zercher squat");
+    // No barbell candidate among the ties: still no guess.
+    expect(matchCatalogue("press")).toBeNull();
+  });
+});

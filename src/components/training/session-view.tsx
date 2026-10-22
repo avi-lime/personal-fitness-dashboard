@@ -308,6 +308,18 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
             </p>
           ) : null}
           {info.rule ? <p className="text-xs text-muted-foreground">{info.rule}</p> : null}
+          {info.instructions.length > 0 ? (
+            <details className="group text-sm">
+              <summary className="cursor-pointer text-xs text-muted-foreground select-none hover:text-foreground">
+                How to do it
+              </summary>
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted-foreground">
+                {info.instructions.map((step, index) => (
+                  <li key={index}>{step}</li>
+                ))}
+              </ol>
+            </details>
+          ) : null}
         </div>
 
         <div className="space-y-2">
