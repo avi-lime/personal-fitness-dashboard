@@ -105,7 +105,28 @@ export interface SetTarget {
   reps: number | null;
   weightKg: number | null;
   seconds: number | null;
+  /** Take this set as far as it goes (Greyskull's last set); `reps` is the minimum. */
+  amrap?: boolean;
 }
+
+/** openGym's progression policies we offer for main lifts (AGPL, see NOTICE.md). */
+export const PROGRESSION_SCHEMES = ["double", "linear", "greyskull"] as const;
+export type ProgressionScheme = (typeof PROGRESSION_SCHEMES)[number];
+
+export const PROGRESSION_LABELS: Record<ProgressionScheme, { name: string; summary: string }> = {
+  double: {
+    name: "Double progression",
+    summary: "Work up through the rep range at one weight; every set at the top and the weight goes up.",
+  },
+  linear: {
+    name: "Linear progression",
+    summary: "Hit every rep in every set and the weight goes up next time. Three misses in a row and it backs off 10%.",
+  },
+  greyskull: {
+    name: "Greyskull LP",
+    summary: "Two sets of 5 and a last set to failure. Beat 5 and the weight goes up — twice as much at 10. One miss resets 10%.",
+  },
+};
 
 export interface Suggestion {
   sets: SetTarget[];
@@ -198,4 +219,104 @@ export function warmupRamp(def: ExerciseDef, working: number | null): SetTarget[
     previous = weight;
   }
   return ramp;
+}
+
+// --- Schemes for main lifts -------------------------------------------------
+
+type Done = Pick<ResolvedSet, "reps" | "weightKg" | "durationSeconds">;
+
+/** Main loaded lifts follow the chosen scheme; accessories and bodyweight stay on double. */
+export function usesScheme(def: ExerciseDef, scheme: ProgressionScheme): boolean {
+  return scheme !== "double" && def.compound && def.measure === "reps" && !isBodyweight(def);
+}
+
+export const DELOAD_FACTOR = 0.9;
+/** Linear backs off after this many sessions in a row short of the target; Greyskull after one. */
+export const LINEAR_MISSES_BEFORE_DELOAD = 3;
+export const GREYSKULL_REPS = 5;
+export const GREYSKULL_SETS = 3;
+
+function workingWeight(sets: readonly Done[]): number | null {
+  const loaded = sets.map((set) => set.weightKg ?? 0).filter((weight) => weight > 0);
+  return loaded.length > 0 ? Math.max(...loaded) : null;
+}
+
+function deload(weight: number, def: ExerciseDef): number {
+  const step = def.increment > 0 ? def.increment : 2.5;
+  return roundToPlate(Math.max(step, Math.floor((weight * DELOAD_FACTOR) / step) * step));
+}
+
+/**
+ * The next targets for an exercise under a scheme, from its past sessions
+ * (completed work sets, oldest first). Sessions are read honestly, as openGym
+ * does: fewer reps than the target, or fewer sets than prescribed, is a miss.
+ */
+export function suggestFor(
+  def: ExerciseDef,
+  scheme: ProgressionScheme,
+  setCount: number,
+  sessions: ReadonlyArray<readonly Done[]>,
+): Suggestion {
+  const last = sessions.at(-1) ?? [];
+  if (!usesScheme(def, scheme)) return suggestSets(def, setCount, last);
+  return scheme === "linear" ? linear(def, setCount, sessions) : greyskull(def, sessions);
+}
+
+function linear(def: ExerciseDef, setCount: number, sessions: ReadonlyArray<readonly Done[]>): Suggestion {
+  const target = def.range[0];
+  const repeat = (weightKg: number | null) => Array.from({ length: setCount }, () => ({ reps: target, weightKg, seconds: null }));
+  const last = sessions.at(-1);
+  const weight = last ? workingWeight(last) : null;
+  if (!last || weight === null) {
+    return { sets: repeat(null), rule: `First time: a weight you can lift for ${setCount} sets of ${target}.` };
+  }
+  const hit = (session: readonly Done[]) => {
+    const at = session.filter((set) => set.weightKg === workingWeight(session));
+    return at.length >= setCount && at.every((set) => (set.reps ?? 0) >= target);
+  };
+  if (hit(last)) {
+    const next = roundToPlate(weight + def.increment);
+    return { sets: repeat(next), rule: `Every set got ${target} at ${weight} kg — up to ${next} kg.` };
+  }
+  let misses = 0;
+  for (let index = sessions.length - 1; index >= 0; index -= 1) {
+    if (workingWeight(sessions[index]) !== weight || hit(sessions[index])) break;
+    misses += 1;
+  }
+  if (misses >= LINEAR_MISSES_BEFORE_DELOAD) {
+    const back = deload(weight, def);
+    return { sets: repeat(back), rule: `${misses} sessions short at ${weight} kg — back off 10% to ${back} kg and build again.` };
+  }
+  return {
+    sets: repeat(weight),
+    rule: `Stay at ${weight} kg until every set gets ${target}. ${misses} of ${LINEAR_MISSES_BEFORE_DELOAD} misses before a back-off.`,
+  };
+}
+
+function greyskull(def: ExerciseDef, sessions: ReadonlyArray<readonly Done[]>): Suggestion {
+  const reps = GREYSKULL_REPS;
+  const make = (weightKg: number | null): SetTarget[] => [
+    { reps, weightKg, seconds: null },
+    { reps, weightKg, seconds: null },
+    { reps, weightKg, seconds: null, amrap: true },
+  ];
+  const last = sessions.at(-1);
+  const weight = last ? workingWeight(last) : null;
+  if (!last || weight === null) {
+    return { sets: make(null), rule: "First time: two sets of 5 and a last set to failure, at a weight you could lift about 8 times." };
+  }
+  const at = last.filter((set) => set.weightKg === weight);
+  const final = at.at(-1)?.reps ?? 0;
+  if (at.length < GREYSKULL_SETS || at.some((set) => (set.reps ?? 0) < reps)) {
+    const back = deload(weight, def);
+    return { sets: make(back), rule: `Missed a set at ${weight} kg — reset 10% to ${back} kg.` };
+  }
+  const doubled = final >= reps * 2;
+  const next = roundToPlate(weight + def.increment * (doubled ? 2 : 1));
+  return {
+    sets: make(next),
+    rule: doubled
+      ? `${final} reps on the last set — a double jump to ${next} kg.`
+      : `Beat 5 on the last set (${final}) — up to ${next} kg.`,
+  };
 }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { validateMetricParam } from "@/lib/validation";
+import { PROGRESSION_SCHEMES } from "@/lib/fitness/progression";
 import {
   accountKindSchema,
   amountSchema,
@@ -609,4 +610,8 @@ export const setTrainingPreferencesInput = z.object({
     .optional(),
   equipment: equipmentSetupSchema.describe("gym | dumbbells | bodyweight").optional(),
   daysPerWeek: z.number().int().min(1).max(7).optional(),
+  progression: z
+    .enum(PROGRESSION_SCHEMES)
+    .describe("How main lifts progress: double (rep range, then weight), linear (weight every clean session) or greyskull (2×5 + a set to failure).")
+    .optional(),
 });

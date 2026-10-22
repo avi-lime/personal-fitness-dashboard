@@ -17,6 +17,7 @@ import { claimMission, createReward, listRewards, redeemReward } from "@/server/
 import { MUSCLE_META } from "@/lib/fitness/muscles";
 import { PROGRAMS } from "@/lib/fitness/programs";
 import { EQUIPMENT_SETUP_LABELS } from "@/lib/fitness/exercises";
+import { PROGRESSION_LABELS } from "@/lib/fitness/progression";
 import type { PlannedWorkout } from "@/lib/fitness/planner";
 import type { MuscleStatus } from "@/lib/fitness/status";
 
@@ -271,8 +272,9 @@ export const trainingTools = [
         program: args.program ?? current.program,
         equipment: args.equipment ?? current.equipment,
         daysPerWeek: args.daysPerWeek ?? current.daysPerWeek,
+        progression: args.progression ?? current.progression,
       });
-      const summary = `Training set to ${PROGRAMS[saved.program].name}, ${saved.daysPerWeek}×/week, ${EQUIPMENT_SETUP_LABELS[saved.equipment].toLowerCase()}.`;
+      const summary = `Training set to ${PROGRAMS[saved.program].name}, ${saved.daysPerWeek}×/week, ${EQUIPMENT_SETUP_LABELS[saved.equipment].toLowerCase()}, ${PROGRESSION_LABELS[saved.progression].name.toLowerCase()} on main lifts.`;
       await recordMutation(ctx.userId, "set_training_preferences", args, summary, ctx.source);
       return { summary, data: saved };
     },

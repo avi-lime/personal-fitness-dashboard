@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SetupCard } from "./setup-card";
 import { PROGRAMS } from "@/lib/fitness/programs";
 import { EQUIPMENT_SETUP_LABELS } from "@/lib/fitness/exercises";
+import { PROGRESSION_LABELS } from "@/lib/fitness/progression";
 import type { TrainingPreferences } from "@/server/services/training";
 
 export function PreferencesDisclosure({ preferences }: { preferences: TrainingPreferences }) {
@@ -15,7 +16,7 @@ export function PreferencesDisclosure({ preferences }: { preferences: TrainingPr
     <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
       <span>
         {PROGRAMS[preferences.program].name} · {preferences.daysPerWeek}×/week ·{" "}
-        {EQUIPMENT_SETUP_LABELS[preferences.equipment]}
+        {EQUIPMENT_SETUP_LABELS[preferences.equipment]} · {PROGRESSION_LABELS[preferences.progression].name}
       </span>
       <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
         <Settings2 className="size-3.5" aria-hidden /> Change

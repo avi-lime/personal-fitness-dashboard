@@ -1,7 +1,7 @@
 import { canDo, exerciseByKey, type EquipmentSetup, type ExerciseDef, type Measure } from "./exercises";
 import type { ResolvedSet } from "./history";
 import { MUSCLE_META, type Muscle } from "./muscles";
-import { suggestSets, warmupRamp, type SetTarget } from "./progression";
+import { GREYSKULL_SETS, suggestFor, usesScheme, warmupRamp, type ProgressionScheme, type SetTarget } from "./progression";
 import { TOP_UP_EXERCISES, type DayKey, type Program, type ProgramDay } from "./programs";
 import { attentionList, type MuscleStatus } from "./status";
 import type { LocalDate } from "@/lib/date";
@@ -65,6 +65,8 @@ export interface PlannerInput {
   statuses: readonly MuscleStatus[];
   /** Completed sets, oldest first. */
   history: readonly ResolvedSet[];
+  /** How main lifts progress. Defaults to double progression. */
+  scheme?: ProgressionScheme;
 }
 
 /** Share of a day's focus muscles that are recovered. */
@@ -114,24 +116,25 @@ function chooseDay(input: PlannerInput, statuses: ReadonlyMap<Muscle, MuscleStat
   };
 }
 
-function lastPerformance(history: readonly ResolvedSet[]) {
-  const last = new Map<string, { workoutId: string; date: LocalDate; sets: ResolvedSet[] }>();
+/** Every past session of each exercise, oldest first. */
+function sessionsByExercise(history: readonly ResolvedSet[]) {
+  const sessions = new Map<string, Array<{ workoutId: string; date: LocalDate; sets: ResolvedSet[] }>>();
   for (const set of history) {
-    const entry = last.get(set.identity);
-    if (!entry || entry.workoutId !== set.workoutId) {
-      // History is chronological, so a newer workout replaces the older one.
-      last.set(set.identity, { workoutId: set.workoutId, date: set.date, sets: [set] });
-    } else {
-      entry.sets.push(set);
-    }
+    const list = sessions.get(set.identity) ?? [];
+    const latest = list.at(-1);
+    if (latest && latest.workoutId === set.workoutId) latest.sets.push(set);
+    else list.push({ workoutId: set.workoutId, date: set.date, sets: [set] });
+    sessions.set(set.identity, list);
   }
-  return last;
+  return sessions;
 }
 
 export function planWorkout(input: PlannerInput): PlannedWorkout {
   const statuses = new Map(input.statuses.map((status) => [status.muscle, status]));
   const chosen = chooseDay(input, statuses);
-  const last = lastPerformance(input.history);
+  const scheme = input.scheme ?? "double";
+  const past = sessionsByExercise(input.history);
+  const last = new Map([...past].map(([identity, list]) => [identity, list.at(-1)!]));
 
   const used = new Set<string>();
   const warmed = new Set<Muscle>();
@@ -141,7 +144,11 @@ export function planWorkout(input: PlannerInput): PlannedWorkout {
     const notes = [...extra];
     let sets = baseSets;
     const status = statuses.get(def.primary[0]);
-    if (!topUp && status?.state === "recovering") {
+    const fixed = scheme === "greyskull" && usesScheme(def, scheme);
+    if (fixed) {
+      // Greyskull is always two sets and one to failure; volume is not its lever.
+      sets = GREYSKULL_SETS;
+    } else if (!topUp && status?.state === "recovering") {
       sets = Math.max(2, sets - 1);
       notes.push(`${MUSCLE_META[status.muscle].label} is ${Math.round(status.recovery * 100)}% recovered — one set fewer.`);
     } else if (!topUp && status?.needsAttention) {
@@ -149,7 +156,7 @@ export function planWorkout(input: PlannerInput): PlannedWorkout {
       notes.push(`${MUSCLE_META[status.muscle].label} is behind this week — one extra set.`);
     }
     const previous = last.get(def.key);
-    const suggestion = suggestSets(def, sets, previous?.sets ?? []);
+    const suggestion = suggestFor(def, scheme, sets, (past.get(def.key) ?? []).map((session) => session.sets));
     // One ramp per muscle: the incline press after the bench is already warm.
     const warmups = def.compound && !warmed.has(def.primary[0]) ? warmupRamp(def, suggestion.sets[0]?.weightKg ?? null) : [];
     if (def.compound) warmed.add(def.primary[0]);

@@ -394,6 +394,8 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
             const warmup = set.phase === "warmup";
             const position = warmup ? -1 : workSets.indexOf(set);
             const name = warmup ? "warm-up set" : `set ${position + 1}`;
+            // Greyskull's last set goes to failure: the target is the minimum.
+            const toFailure = !warmup && info.amrapLast && position === workSets.length - 1;
             return (
               <div key={set.id} className="space-y-1">
               <div
@@ -405,9 +407,9 @@ export function SessionView({ workout, meta }: { workout: WorkoutView; meta: Ses
               >
                 <span
                   className={cn("text-center text-sm tabular", warmup ? "text-xs font-medium text-brand" : "text-muted-foreground")}
-                  title={warmup ? "Warm-up: no XP, never a record" : undefined}
+                  title={warmup ? "Warm-up: no XP, never a record" : toFailure ? "To failure: as many good reps as you can" : undefined}
                 >
-                  {warmup ? "W" : position + 1}
+                  {warmup ? "W" : toFailure ? `${position + 1}+` : position + 1}
                 </span>
                 {timed ? (
                   <div className="col-span-2 min-w-0">

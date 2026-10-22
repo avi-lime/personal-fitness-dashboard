@@ -34,6 +34,7 @@ import type {
 } from "@/lib/domain";
 import type { EquipmentSetup } from "@/lib/fitness/exercises";
 import type { DayKey, ProgramKey } from "@/lib/fitness/programs";
+import type { ProgressionScheme } from "@/lib/fitness/progression";
 
 /**
  * Measurements are stored as `double precision` rather than `numeric` so the
@@ -677,6 +678,8 @@ export const trainingSettings = pgTable("training_settings", {
   equipment: text("equipment").$type<EquipmentSetup>().notNull().default("gym"),
   /** Sessions a week the user is aiming for; drives the weekly mission. */
   daysPerWeek: integer("days_per_week").notNull().default(4),
+  /** How main lifts progress: double (default), linear or greyskull. Accessories always use double. */
+  progression: text("progression").$type<ProgressionScheme>().notNull().default("double"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

@@ -276,3 +276,53 @@ describe("warm-ups and drops", () => {
     expect(session.volumeKg).toBe(60 * 8 + 48 * 8);
   });
 });
+
+describe("progression schemes", () => {
+  const bench = () => exerciseByKey("barbell-bench-press")!; // 6–10, +2.5 kg
+  const session = (weightKg: number, reps: number[]) => reps.map((r) => ({ reps: r, weightKg, durationSeconds: null }));
+
+  it("linear: up after a clean session, stay after a miss, back off after three", async () => {
+    const { suggestFor } = await import("@/lib/fitness/progression");
+    expect(suggestFor(bench(), "linear", 3, [session(60, [6, 6, 6])]).sets[0]).toEqual({ reps: 6, weightKg: 62.5, seconds: null });
+    expect(suggestFor(bench(), "linear", 3, [session(60, [6, 6, 5])]).sets[0].weightKg).toBe(60);
+    // Fewer sets than prescribed is a miss too.
+    expect(suggestFor(bench(), "linear", 3, [session(60, [6, 6])]).sets[0].weightKg).toBe(60);
+    const stuck = [session(60, [6, 5, 5]), session(60, [6, 6, 4]), session(60, [5, 5, 5])];
+    const back = suggestFor(bench(), "linear", 3, stuck);
+    expect(back.sets[0].weightKg).toBe(52.5);
+    expect(back.rule).toMatch(/back off 10%/);
+  });
+
+  it("greyskull: two of 5 and one to failure; beat it, double it, or reset", async () => {
+    const { suggestFor } = await import("@/lib/fitness/progression");
+    const first = suggestFor(bench(), "greyskull", 4, []);
+    expect(first.sets).toHaveLength(3);
+    expect(first.sets[2].amrap).toBe(true);
+    expect(suggestFor(bench(), "greyskull", 3, [session(60, [5, 5, 7])]).sets[0].weightKg).toBe(62.5);
+    expect(suggestFor(bench(), "greyskull", 3, [session(60, [5, 5, 10])]).sets[0].weightKg).toBe(65);
+    expect(suggestFor(bench(), "greyskull", 3, [session(60, [5, 4, 6])]).sets[0].weightKg).toBe(52.5);
+  });
+
+  it("leaves accessories and bodyweight work on double progression", async () => {
+    const { suggestFor, suggestSets } = await import("@/lib/fitness/progression");
+    const raise = exerciseByKey("lateral-raise")!;
+    const last = session(8, [15, 14, 13]);
+    expect(suggestFor(raise, "greyskull", 3, [last])).toEqual(suggestSets(raise, 3, last));
+    expect(suggestFor(exerciseByKey("pull-up")!, "linear", 3, [session(0, [8, 8, 8])]).sets).toHaveLength(3);
+  });
+
+  it("plans Greyskull main lifts as three sets whatever the slot says", () => {
+    const history = resolveSets(times(3, () => set("Bench press", 9, { weightKg: 60, reps: 5 })));
+    const result = planWorkout({
+      program: PROGRAMS.ppl,
+      setup: "gym",
+      lastDay: "legs",
+      statuses: computeMuscleStatus(history, TODAY, NOW),
+      history,
+      scheme: "greyskull",
+    });
+    const press = result.exercises.find((exercise) => exercise.key === "barbell-bench-press")!;
+    expect(press.sets).toHaveLength(3);
+    expect(press.sets[2].amrap).toBe(true);
+  });
+});

@@ -1,0 +1,1 @@
+ALTER TABLE "training_settings" ADD COLUMN "progression" text DEFAULT 'double' NOT NULL;

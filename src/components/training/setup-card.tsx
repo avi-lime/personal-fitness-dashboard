@@ -8,6 +8,7 @@ import { useAction } from "@/components/common/use-action";
 import { saveTrainingPreferencesAction } from "@/server/actions/training";
 import { PROGRAMS, PROGRAM_KEYS, type ProgramKey } from "@/lib/fitness/programs";
 import { EQUIPMENT_SETUPS, EQUIPMENT_SETUP_LABELS, type EquipmentSetup } from "@/lib/fitness/exercises";
+import { PROGRESSION_LABELS, PROGRESSION_SCHEMES, type ProgressionScheme } from "@/lib/fitness/progression";
 import type { TrainingPreferences } from "@/server/services/training";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ export function SetupCard({
   const [program, setProgram] = useState<ProgramKey>(preferences.program);
   const [equipment, setEquipment] = useState<EquipmentSetup>(preferences.equipment);
   const [days, setDays] = useState(preferences.daysPerWeek);
+  const [progression, setProgression] = useState<ProgressionScheme>(preferences.progression);
   const { pending, run } = useAction();
 
   return (
@@ -97,6 +99,25 @@ export function SetupCard({
         </fieldset>
       </div>
 
+      <fieldset>
+        <legend className="mb-2 text-xs tracking-wide text-muted-foreground uppercase">Progression on main lifts</legend>
+        <ToggleGroup
+          type="single"
+          value={progression}
+          onValueChange={(value) => value && setProgression(value as ProgressionScheme)}
+          className="flex-wrap justify-start"
+        >
+          {PROGRESSION_SCHEMES.map((scheme) => (
+            <ToggleGroupItem key={scheme} value={scheme}>
+              {PROGRESSION_LABELS[scheme].name}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          {PROGRESSION_LABELS[progression].summary} Accessories always use double progression.
+        </p>
+      </fieldset>
+
       <div className="flex justify-end gap-2">
         {onDone ? (
           <Button variant="ghost" size="sm" onClick={onDone}>
@@ -107,7 +128,7 @@ export function SetupCard({
           size="sm"
           disabled={pending}
           onClick={() =>
-            run(() => saveTrainingPreferencesAction({ program, equipment, daysPerWeek: days }), {
+            run(() => saveTrainingPreferencesAction({ program, equipment, daysPerWeek: days, progression }), {
               success: "Training plan saved",
               onSuccess: onDone,
             })

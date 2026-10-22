@@ -8,7 +8,13 @@ import { matchExercise, normaliseExerciseName, type EquipmentSetup } from "@/lib
 import { instructionsFor, resolveFully } from "@/lib/fitness/catalogue";
 import { resolveSets, type SetRecord } from "@/lib/fitness/history";
 import { MUSCLES } from "@/lib/fitness/muscles";
-import { findPersonalRecords, suggestSets, type PersonalRecord } from "@/lib/fitness/progression";
+import {
+  findPersonalRecords,
+  suggestFor,
+  usesScheme,
+  type PersonalRecord,
+  type ProgressionScheme,
+} from "@/lib/fitness/progression";
 import { planWorkout, type PlannedWorkout } from "@/lib/fitness/planner";
 import { PROGRAMS, isDayKey, type DayKey, type ProgramKey } from "@/lib/fitness/programs";
 import { attentionList, computeMuscleStatus, restList, type MuscleStatus } from "@/lib/fitness/status";
@@ -42,6 +48,7 @@ export interface TrainingPreferences {
   program: ProgramKey;
   equipment: EquipmentSetup;
   daysPerWeek: number;
+  progression: ProgressionScheme;
   /** False until the user has saved their own choices. */
   configured: boolean;
 }
@@ -50,13 +57,20 @@ export const DEFAULT_PREFERENCES: TrainingPreferences = {
   program: "ppl",
   equipment: "gym",
   daysPerWeek: 4,
+  progression: "double",
   configured: false,
 };
 
 export async function getTrainingPreferences(userId: string): Promise<TrainingPreferences> {
   const [row] = await db.select().from(trainingSettings).where(eq(trainingSettings.userId, userId)).limit(1);
   if (!row) return DEFAULT_PREFERENCES;
-  return { program: row.program, equipment: row.equipment, daysPerWeek: row.daysPerWeek, configured: true };
+  return {
+    program: row.program,
+    equipment: row.equipment,
+    daysPerWeek: row.daysPerWeek,
+    progression: row.progression,
+    configured: true,
+  };
 }
 
 export async function saveTrainingPreferences(
@@ -222,6 +236,7 @@ export async function getTrainingSnapshot(
     day: options.day,
     statuses,
     history: sets,
+    scheme: preferences.progression,
   });
 
   // Missions read the state as it was when their period began, so what they
@@ -517,6 +532,8 @@ export interface SessionExerciseMeta {
   primary: string[];
   /** Step-by-step, from the catalogue; empty when it has none. */
   instructions: string[];
+  /** The last work set is taken to failure (Greyskull). */
+  amrapLast: boolean;
   rule: string | null;
   last: { date: LocalDate; sets: Array<{ reps: number | null; weightKg: number | null; durationSeconds: number | null }> } | null;
 }
@@ -527,20 +544,25 @@ export interface SessionExerciseMeta {
  * exercise *is*, so an old "Bench" and a new "Bench press" count as one.
  */
 export async function sessionMeta(userId: string, workout: WorkoutView): Promise<SessionExerciseMeta[]> {
-  const history = resolveSets(await loadSetRecords(userId)).filter((set) => set.workoutId !== workout.id);
-  const last = new Map<string, { workoutId: string; date: LocalDate; sets: typeof history }>();
+  const [records, preferences] = await Promise.all([loadSetRecords(userId), getTrainingPreferences(userId)]);
+  const history = resolveSets(records).filter((set) => set.workoutId !== workout.id && set.date <= workout.date);
+  const past = new Map<string, Array<{ workoutId: string; date: LocalDate; sets: typeof history }>>();
   for (const set of history) {
-    if (set.date > workout.date) continue;
-    const entry = last.get(set.identity);
-    if (!entry || entry.workoutId !== set.workoutId) last.set(set.identity, { workoutId: set.workoutId, date: set.date, sets: [set] });
-    else entry.sets.push(set);
+    const list = past.get(set.identity) ?? [];
+    const latest = list.at(-1);
+    if (latest && latest.workoutId === set.workoutId) latest.sets.push(set);
+    else list.push({ workoutId: set.workoutId, date: set.date, sets: [set] });
+    past.set(set.identity, list);
   }
+  const scheme = preferences.progression;
 
   return workout.exercises.map((exercise) => {
     const resolved = resolveFully({ exerciseKey: exercise.exerciseKey, name: exercise.name, muscleGroup: exercise.muscleGroup });
     const def = resolved.def;
     const identity = resolved.identity;
-    const previous = last.get(identity) ?? null;
+    const sessions = past.get(identity) ?? [];
+    const previous = sessions.at(-1) ?? null;
+    const workCount = Math.max(1, exercise.sets.filter((set) => set.phase === "work").length);
     return {
       exerciseId: exercise.id,
       key: def?.key ?? null,
@@ -550,7 +572,8 @@ export async function sessionMeta(userId: string, workout: WorkoutView): Promise
       step: def && def.increment > 0 ? def.increment : 2.5,
       primary: resolved.primary,
       instructions: resolved.catalogue?.instructions ?? instructionsFor(def, exercise.name),
-      rule: def ? suggestSets(def, Math.max(1, exercise.sets.length), previous?.sets ?? []).rule : null,
+      rule: def ? suggestFor(def, scheme, workCount, sessions.map((session) => session.sets)).rule : null,
+      amrapLast: def !== null && scheme === "greyskull" && usesScheme(def, scheme),
       last: previous
         ? {
             date: previous.date,

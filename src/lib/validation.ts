@@ -20,6 +20,7 @@ import { METRICS } from "./metrics";
 import { WEEKDAYS, isHHMM } from "./plan";
 import { EQUIPMENT_SETUPS } from "./fitness/exercises";
 import { DAY_KEYS, PROGRAM_KEYS } from "./fitness/programs";
+import { PROGRESSION_SCHEMES } from "./fitness/progression";
 
 /**
  * One set of schemas shared by the web server actions and the MCP tools, so
@@ -494,6 +495,7 @@ export const trainingPreferencesSchema = z.object({
   program: programKeySchema,
   equipment: equipmentSetupSchema,
   daysPerWeek: z.number().int().min(1, "At least one day a week").max(7),
+  progression: z.enum(PROGRESSION_SCHEMES).default("double"),
 });
 
 /** What was actually lifted. Every field optional: a timed hold has no reps. */
